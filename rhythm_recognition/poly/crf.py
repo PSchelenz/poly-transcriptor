@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa
 
+'''
+[1]	Filip Korzeniowski, Sebastian Böck and Gerhard Widmer, “Probabilistic Extraction of Beat Positions from a Beat Activation Function”, Proceedings of the 15th International Society for Music Information Retrieval Conference (ISMIR), 2014.
+'''
 
 def detect_rhythm_with_madmom(audio_path):
     # 1. Preprocessing: Load the audio file using madmom

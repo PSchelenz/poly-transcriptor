@@ -8,6 +8,11 @@ from scipy.signal.windows import blackmanharris, hann, blackman
 from scipy.fft import fft
 import warnings
 import matplotlib.pyplot as plt
+import pathlib
+
+globalY = None
+globalPA = None
+globalW = None
 
 
 def nextpow2(i):
@@ -16,13 +21,15 @@ def nextpow2(i):
     return n
 
 
-def transcription(filename, iter, S, sz, su, sh):
-    shiftedW = sio.loadmat('shiftedW.mat')['shiftedW']  # This file should be prepared beforehand
+def transcription(filename, iter, S, sz, su, sh, model_path='shiftedW.mat', sr = 44100, min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8):
+    global globalY, globalPA, globalW
+
+    shiftedW = sio.loadmat(model_path)['shiftedW']  # This file should be prepared beforehand
     pitchActivity = np.array([[1, 1, 1], [88, 88, 88]]).T
     W = np.transpose(shiftedW, (2, 3, 1, 0))
     W = W[:, :S, :, :]
 
-    intCQT = compute_cqt(filename)
+    intCQT = compute_cqt(filename, sr)
     X = intCQT[:, np.round(np.arange(0, intCQT.shape[1], 7.1128)).astype(int)].T
     print('Calc noise')
     noiseLevel1 = medfilt(X.T, kernel_size=[41, 1])
@@ -31,23 +38,34 @@ def transcription(filename, iter, S, sz, su, sh):
     X = np.maximum(X - noiseLevel2.T, 0)
     Y = X[::4, :]  # 40ms step
 
+    globalY = Y
+    globalPA = pitchActivity
+    globalW = W
+
     w, h, z, u, xa = mssiplca_fast(Y.T, 88, S, 5, iter, sh, sz, su, W, None, None, None, 1, pitchActivity)
 
     pianoRoll = z
-    return pianoRoll
 
-def compute_cqt(filename):
+    pianoRoll = filter_notes(pianoRoll, draw_threshold, draw_notes_longer_than)
+
+    # plt.pcolormesh(np.arange(pianoRoll.shape[1]), np.arange(max_draw_note - min_draw_note + 1),
+    #                pianoRoll[min_draw_note - 1 : max_draw_note],
+    #                shading='auto', cmap='binary')
+
+    return pianoRoll[min_draw_note - 1 : max_draw_note]
+
+def compute_cqt(filename, sr):
     # Load audio file
-    y, fs = librosa.load(filename, sr=None, mono=False)
+    y, fs = librosa.load(filename, duration=30, sr=None, mono=False)
 
     # If stereo, convert to mono by averaging the channels
     if y.ndim > 1:
         y = np.mean(y, axis=0)
 
     # Resample to 44100 Hz if necessary
-    if fs != 44100:
-        y = librosa.resample(y, orig_sr=fs, target_sr=44100)
-        fs = 44100
+    if fs != sr:
+        y = librosa.resample(y, orig_sr=fs, target_sr=sr)
+        fs = sr
 
     # Compute CQT
     Xcqt = cqt(y, 27.5, fs / 3, 60, fs, q=0.80, atomHopFactor=0.3, thresh=0.0005, win='hann')
@@ -232,6 +250,7 @@ def cell2sparse(Xcq, octaves, bins, firstcenter, atomHOP, atomNr):
     emptyHops = firstcenter / atomHOP
     drops = emptyHops * 2 ** (np.arange(octaves) + 1 - 1) - emptyHops
     drops = drops[::-1]
+    atomNr = int(atomNr)
     len_max = np.max(((atomNr * np.array([x.shape[1] for x in Xcq]) - drops) * 2 ** np.arange(octaves)))
 
     spCQT_list = []
@@ -328,7 +347,7 @@ def mssiplca_fast(x, K, R, F, iter=100, sh=1.0, sz=1.0, su=1.0, w=None, h=None, 
     w_reshaped = w.reshape(M, R * K * F)
     sumx = np.diag(sumx)
 
-    plt.figure(figsize=(20, 16))
+    # plt.figure(figsize=(20, 16))
 
     # Iterate
     for it in range(iter):
@@ -359,16 +378,50 @@ def mssiplca_fast(x, K, R, F, iter=100, sh=1.0, sz=1.0, su=1.0, w=None, h=None, 
 
 
     # if pl:
-    #     plt.subplot(3, 1, 1)
-    #     plt.imshow(x, aspect='auto', origin='lower')
-    #     plt.title(f'Git gud')
-    #     plt.subplot(3, 1, 2)
-    #     plt.imshow(xa, aspect='auto', origin='lower')
-    #     plt.subplot(3, 1, 3)
-    #     plt.imshow(z, aspect='auto', origin='lower')
-    #     plt.show()
+        # plt.subplot(3, 1, 1)
+        # plt.imshow(x, aspect='auto', origin='lower')
+        # plt.title(f'Git gud')
+        # plt.subplot(3, 1, 2)
+        # plt.imshow(xa, aspect='auto', origin='lower')
+        # plt.subplot(3, 1, 3)
+        # plt.imshow(z, aspect='auto', origin='lower')
+
+    # plt.pcolormesh(np.arange(z.shape[1]), np.arange(z.shape[0]), z, shading='auto')
+        # plt.show()
 
     return w, h, z, u, xa
 
 
-transcription('../../../../samples/piano/01-piano_samples_merged.wav', 50, 3, 1.05, 1.5, 1.1)
+#my code
+def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
+    # normalize notes
+    normalized_pianoRoll = pianoRoll / np.max(pianoRoll)
+    normalized_pianoRoll[normalized_pianoRoll < threshold] = 0
+    normalized_pianoRoll[normalized_pianoRoll >= threshold] = 1
+
+    # remove notes that are too short
+    for note_index in range(normalized_pianoRoll.shape[0]):
+        active_frames = np.diff(np.r_[0, normalized_pianoRoll[note_index, :], 0])
+        starts = np.where(active_frames > 0)[0]
+        ends = np.where(active_frames < 0)[0]
+        for start, end in zip(starts, ends):
+            if (end - start) < count_notes_lt:
+                normalized_pianoRoll[note_index, start:end] = 0
+
+    return normalized_pianoRoll
+
+if __name__ == '__main__':
+    plt.figure(figsize=(16, 8))
+    ax1 = plt.subplot(2, 2, 1)
+    ax1.title.set_text('SH = 1.0, SZ = 1.2, SU = 1.2')
+    z = transcription('../../../audio/midi_tracks/Canon_in_D.mp3', 50, 3, 1.18, 1.15, 1)
+    ax2 = plt.subplot(2, 2, 2)
+    ax2.title.set_text('SH = 0.9, SZ = 1.2, SU = 1.2')
+    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 3, 5, 50, 0.9, 1.18, 1.2, globalW, None, None, None, 1, globalPA)
+    ax3 = plt.subplot(2, 2, 3)
+    ax3.title.set_text('SH = 0.8, SZ = 1.2, SU = 1.2')
+    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 3, 5, 50, 0.8, 1.18, 1.10, globalW, None, None, None, 1, globalPA)
+    ax4 = plt.subplot(2, 2, 4)
+    ax4.title.set_text('SH = 0.6, SZ = 1.2, SU = 1.2')
+    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 3, 5, 50, 0.6, 1.18, 1.05, globalW, None, None, None, 1, globalPA)
+    plt.show()

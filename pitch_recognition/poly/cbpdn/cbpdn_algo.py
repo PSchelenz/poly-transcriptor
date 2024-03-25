@@ -7,65 +7,65 @@ from scipy.signal import argrelextrema
 from sporco.admm import cbpdn
 import pickle
 
-# notes = ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'Ais', 'H']
-# octaves = ['0', '1', '2', '3', '4', '5', '6', '7', '8']
-#
-# sr = 11025
-# window_size = 0.050
-#
-# filepath = "/home/piotr/Magisterka/samples/piano/01-piano_samples_merged.wav"
-#
-# abbrev = "piano_scale"
-#
+notes = ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'Ais', 'H']
+octaves = ['0', '1', '2', '3', '4', '5', '6', '7', '8']
+
+sr = 11025
+window_size = 0.050
+
+filepath = "/home/piotr/Magisterka/samples/piano/01-piano_samples_merged.wav"
+
+abbrev = "piano_scale"
+
 duration = 30
-#
-# D = []
-# directory = '/home/piotr/Magisterka/samples/piano/full_notes/'
-# dictname = 'mapsdict'
-#
-# maxi = 0
-#
-# for octave in octaves:
-#     for note in notes:
-#         if (octave == '0' and note not in ['A', 'Ais', 'H']) or (octave == '8' and note != 'C'):
-#             continue
-#
-#         filename = directory + note + octave + '.wav'
-#         y, sr = librosa.load(filename, sr=sr, duration=1)
-#
-#         D.append(y / np.amax(y))
-#
-# D = np.array(D)
-#
-# D = D.T
-#
-# with open(dictname + '.pkl', 'wb') as fid:
-#     pickle.dump(D, fid)
-#
-# with open(dictname + '.pkl', 'rb') as fid:
-#     D = pickle.load(fid)
-#
-# lmbda = 0.005
-#
-# dimN = 1
-#
-# opt = cbpdn.ConvBPDN.Options({'Verbose': True,
-#                               'MaxMainIter': 500,
-#                               'HighMemSolve': False,
-#                               'LinSolveCheck': False,
-#                               'RelStopTol': 1e-3,
-#                               'AuxVarObj': False,
-#                               })
-#
-# song, sr = librosa.load(filepath, sr=sr, offset=50, duration=30)
-#
-# print("Song shape", song.shape)
-#
-# b = cbpdn.ConvBPDN(D, song, lmbda, opt, dimN=dimN)
-#
-# X = b.solve()
-#
-# X = X[:, 0, 0, :]
+
+D = []
+directory = '/home/piotr/Magisterka/samples/piano/full_notes/'
+dictname = 'mapsdict'
+
+maxi = 0
+
+for octave in octaves:
+    for note in notes:
+        if (octave == '0' and note not in ['A', 'Ais', 'H']) or (octave == '8' and note != 'C'):
+            continue
+
+        filename = directory + note + octave + '.wav'
+        y, sr = librosa.load(filename, sr=sr, duration=1)
+
+        D.append(y / np.amax(y))
+
+D = np.array(D)
+
+D = D.T
+
+with open(dictname + '.pkl', 'wb') as fid:
+    pickle.dump(D, fid)
+
+with open(dictname + '.pkl', 'rb') as fid:
+    D = pickle.load(fid)
+
+lmbda = 0.005
+
+dimN = 1
+
+opt = cbpdn.ConvBPDN.Options({'Verbose': True,
+                              'MaxMainIter': 500,
+                              'HighMemSolve': False,
+                              'LinSolveCheck': False,
+                              'RelStopTol': 1e-3,
+                              'AuxVarObj': False,
+                              })
+
+song, sr = librosa.load(filepath, sr=sr, offset=50, duration=30)
+
+print("Song shape", song.shape)
+
+b = cbpdn.ConvBPDN(D, song, lmbda, opt, dimN=dimN)
+
+X = b.solve()
+
+X = X[:, 0, 0, :]
 
 results_name = 'maps_results_' + 'esp6' + '.pkl'
 # with open(results_name, 'wb') as fid:
