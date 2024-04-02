@@ -1,65 +1,48 @@
-import numpy as np
-import librosa
-import matplotlib.pyplot as plt
 import madmom
+import matplotlib.pyplot as plt
+from madmom.audio.filters import LogarithmicFilterbank
+from madmom.io.audio import load_ffmpeg_file, write_wave_file
+import numpy as np
 
+'''
+Sebastian Böck and Gerhard Widmer,
+"Maximum Filter Vibrato Suppression for Onset Detection",
+Proceedings of the 16th International Conference on Digital Audio
+Effects (DAFx), 2013
 
-def _complex_domain(spectrogram):
-    """
-    Simon Dixon,
-    "Onset Detection Revisited",
-    Proceedings of the 9th International Conference on Digital Audio
-    Effects (DAFx), 2006.
-    """
+https://www.dafx12.york.ac.uk/papers/dafx12_submission_4.pdf
+'''
 
-    phase = spectrogram.stft.phase()
-    # make sure the spectrogram is not filtered before
-    if np.shape(phase) != np.shape(spectrogram):
-        raise ValueError('spectrogram and phase must be of same shape')
-    # expected spectrogram
-    cd_target = np.zeros_like(phase)
-    # assume constant phase change
-    cd_target[1:] = 2 * phase[1:] - phase[:-1]
-    # add magnitude
-    cd_target = spectrogram * np.exp(1j * cd_target)
-    # create complex spectrogram
-    cd = spectrogram * np.exp(1j * phase)
-    # subtract the target values
-    cd[1:] -= cd_target[:-1]
-    return np.asarray(cd)
+def onset_detection_complex_domain(filename, hop_length, max_draw_note=88):
+    # Load only a segment of the audio file
+    # audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
 
-def complex_domain(spectrogram):
-    """
-    Juan Pablo Bello, Chris Duxbury, Matthew Davies and Mark Sandler,
-    "On the use of phase and energy for musical onset detection in the
-    complex domain",
-    IEEE Signal Processing Letters, Volume 11, Number 6, 2004.
-    """
-    # take the sum of the absolute changes
-    return np.asarray(np.sum(np.abs(_complex_domain(spectrogram)), axis=1))
+    # Save the segment to a temporary file because RNNOnsetProcessor needs a file as input
+    # temp_filename = 'temp_audio_segment.wav'
+    # write_wave_file(audio, temp_filename, sr)
 
-filename = '../../audio/midi_tracks/Canon_in_D.mp3'
+    # Initialize the pre-trained onset detection model
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(fps=177, pre_max=0.25, post_max=0.25, pre_avg=0.25, post_avg=0.25)
+    act = madmom.features.onsets.SpectralOnsetProcessor('complex_domain', fps=177)(filename, start=0, stop=30)
 
-stft = madmom.audio.stft.STFT(filename, num_channels=1, sample_rate=44100, frame_size=2048, hop_size=441, start=0, stop=30)
+    # Detect onsets
+    onsets = proc(act)
+    onsets = onsets * 177 / 7.075
 
-spec = madmom.audio.spectrogram.Spectrogram(stft)
+    # Time vector for the audio segment
+    # time = np.linspace(0, 30, num=len(audio))
 
-cd = complex_domain(spec)
+    # Plot the audio waveform of the segment and detected onsets
+    # plt.figure(figsize=(14,4))
+    # plt.plot(time, audio, label='Audio Waveform (Segment)')
+    plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
+    # plt.legend()
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Amplitude')
+    # plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
+    # plt.show()
 
-# Onset detection
-onsets = madmom.features.onsets.peak_picking(cd, threshold=10, pre_max=1, post_max=1, pre_avg=1, post_avg=1)
+    return onsets
 
-print(len(onsets))
-
-y, sr = librosa.load(filename, duration=30, sr=44100)
-
-# Convert frame indices to time
-times = librosa.frames_to_time(onsets, sr=sr, hop_length=441, n_fft=2048)
-
-# Plotting
-plt.figure(figsize=(14, 6))
-librosa.display.waveshow(y, sr=sr, alpha=0.5)
-plt.vlines(times, -1, 1, color='r', alpha=0.9, label='Onsets')
-plt.legend()
-plt.title('Phase Deviation Onset Detection')
-plt.show()
+if __name__ == '__main__':
+    detected_onsets = onset_detection_complex_domain('../../audio/midi_tracks/Canon_in_D.mp3', 512)

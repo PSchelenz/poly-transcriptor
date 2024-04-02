@@ -8,7 +8,7 @@ import librosa
 [2]	Florian Krebs, Sebastian Böck and Gerhard Widmer, “An Efficient State Space Model for Joint Tempo and Meter Tracking”, Proceedings of the 16th International Society for Music Information Retrieval Conference (ISMIR), 2015.
 '''
 
-def detect_rhythm_dbn(audio_path, hop_length, max_draw_note=88):
+def detect_beat_dbn(audio_path, hop_length, max_draw_note=88):
     # 1. Preprocessing: Load the audio file using madmom
     proc = madmom.features.beats.DBNBeatTrackingProcessor(fps=177)
     act = madmom.features.beats.RNNBeatProcessor()(audio_path, start=0, stop=30)
@@ -40,4 +40,4 @@ def detect_rhythm_dbn(audio_path, hop_length, max_draw_note=88):
 
 if __name__ == '__main__':
     audio_path = '../../audio/midi_tracks/Canon_in_D.mp3'
-    detect_rhythm_dbn(audio_path)
+    detect_beat_dbn(audio_path)

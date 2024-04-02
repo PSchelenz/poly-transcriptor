@@ -1,77 +1,48 @@
-import numpy as np
-import librosa
+import madmom
 import matplotlib.pyplot as plt
+from madmom.audio.filters import LogarithmicFilterbank
+from madmom.io.audio import load_ffmpeg_file, write_wave_file
+import numpy as np
 
 '''
-Juan Pablo Bello, Chris Duxbury, Matthew Davies and Mark Sandler,
-"On the use of phase and energy for musical onset detection in the
-complex domain",
-IEEE Signal Processing Letters, Volume 11, Number 6, 2004.
+Sebastian Böck and Gerhard Widmer,
+"Maximum Filter Vibrato Suppression for Onset Detection",
+Proceedings of the 16th International Conference on Digital Audio
+Effects (DAFx), 2013
+
+https://www.dafx12.york.ac.uk/papers/dafx12_submission_4.pdf
 '''
 
-def wrap_to_pi(phase):
-    return np.mod(phase + np.pi, 2.0 * np.pi) - np.pi
+def onset_detection_phase_deviation(filename, hop_length, max_draw_note=88):
+    # Load only a segment of the audio file
+    # audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
 
-def _phase_deviation(phase):
-    pd = np.zeros_like(phase)
-    # instantaneous frequency is given by the first difference
-    # ψ′(n, k) = ψ(n, k) − ψ(n − 1, k)
-    # change in instantaneous frequency is given by the second order difference
-    # ψ′′(n, k) = ψ′(n, k) − ψ′(n − 1, k)
-    pd[2:] = phase[2:] - 2 * phase[1:-1] + phase[:-2]
-    # map to the range -pi..pi
-    return np.asarray(wrap_to_pi(pd))
+    # Save the segment to a temporary file because RNNOnsetProcessor needs a file as input
+    # temp_filename = 'temp_audio_segment.wav'
+    # write_wave_file(audio, temp_filename, sr)
 
-def phase_deviation(phase):
-    # absolute phase changes in instantaneous frequency
-    pd = np.abs(_phase_deviation(phase))
-    return np.asarray(np.mean(pd, axis=0))
+    # Initialize the pre-trained onset detection model
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(fps=177, pre_max=0.25, post_max=0.25, pre_avg=0.25, post_avg=0.25)
+    act = madmom.features.onsets.SpectralOnsetProcessor('phase_deviation', fps=177)(filename, start=0, stop=30)
 
-def weighted_phase_deviation(spectrogram, phase):
-    """
-    Simon Dixon,
-    "Onset Detection Revisited",
-    Proceedings of the 9th International Conference on Digital Audio
-    Effects (DAFx), 2006.
-    """
-    # make sure the spectrogram is not filtered before
-    if np.shape(phase) != np.shape(spectrogram):
-        raise ValueError('spectrogram and phase must be of same shape')
-    # weighted_phase_deviation = spectrogram * phase_deviation
-    wpd = np.abs(_phase_deviation(phase) * spectrogram)
-    return np.asarray(np.mean(wpd, axis=0))
+    # Detect onsets
+    onsets = proc(act)
+    onsets = onsets * 177 / 7.075
 
-def normalized_weighted_phase_deviation(spectrogram, phase, epsilon=np.finfo(float).eps):
-    """
-    Simon Dixon,
-    "Onset Detection Revisited",
-    Proceedings of the 9th International Conference on Digital Audio
-    Effects (DAFx), 2006.
-    """
-    if epsilon <= 0:
-        raise ValueError("a positive value must be added before division")
-    # normalize WPD by the sum of the spectrogram
-    # (add a small epsilon so that we don't divide by 0)
-    norm = np.add(np.mean(spectrogram, axis=0), epsilon)
-    return np.asarray(weighted_phase_deviation(spectrogram, phase) / norm)
+    # Time vector for the audio segment
+    # time = np.linspace(0, 30, num=len(audio))
 
-filename = '../../audio/midi_tracks/Canon_in_D.mp3'
+    # Plot the audio waveform of the segment and detected onsets
+    # plt.figure(figsize=(14,4))
+    # plt.plot(time, audio, label='Audio Waveform (Segment)')
+    plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
+    # plt.legend()
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Amplitude')
+    # plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
+    # plt.show()
 
-y, sr = librosa.load(filename, duration=30)
-stft = librosa.stft(y)
-S = np.abs(stft)
-phase = np.angle(stft)
-pd = normalized_weighted_phase_deviation(S, phase)
+    return onsets
 
-onsets = librosa.util.peak_pick(pd, pre_max=1, post_max=1, pre_avg=1, post_avg=1, delta=0.01, wait=0)
-
-# Convert frame indices to time
-times = librosa.frames_to_time(onsets, sr=sr)
-
-# Plotting
-plt.figure(figsize=(14, 6))
-librosa.display.waveshow(y, sr=sr, alpha=0.5)
-plt.vlines(times, -1, 1, color='r', alpha=0.9, label='Onsets')
-plt.legend()
-plt.title('Phase Deviation Onset Detection')
-plt.show()
+if __name__ == '__main__':
+    detected_onsets = onset_detection_phase_deviation('../../audio/midi_tracks/Canon_in_D.mp3', 512)

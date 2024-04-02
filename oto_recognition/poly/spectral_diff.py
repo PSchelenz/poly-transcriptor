@@ -1,44 +1,48 @@
-import librosa
-import librosa.display
-import numpy as np
+import madmom
 import matplotlib.pyplot as plt
+from madmom.audio.filters import LogarithmicFilterbank
+from madmom.io.audio import load_ffmpeg_file, write_wave_file
+import numpy as np
 
 '''
-Chris Duxbury, Mark Sandler and Matthew Davis, “A hybrid approach to musical note onset detection”, Proceedings of the 5th International Conference on Digital Audio Effects (DAFx), 2002.
+Sebastian Böck and Gerhard Widmer,
+"Maximum Filter Vibrato Suppression for Onset Detection",
+Proceedings of the 16th International Conference on Digital Audio
+Effects (DAFx), 2013
+
+https://www.dafx12.york.ac.uk/papers/dafx12_submission_4.pdf
 '''
 
-def onset_detection_spectral_diff_and_plot(audio_file, sr=44100, hop_length=512, frame_length=1024):
-    # Load the audio file
-    y, sr = librosa.load(audio_file, sr=sr, duration=30)
+def onset_detection_spectral_diff(filename, hop_length, max_draw_note=88):
+    # Load only a segment of the audio file
+    # audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
 
-    # Calculate the Short-Time Fourier Transform (STFT)
-    D = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
+    # Save the segment to a temporary file because RNNOnsetProcessor needs a file as input
+    # temp_filename = 'temp_audio_segment.wav'
+    # write_wave_file(audio, temp_filename, sr)
 
-    # Calculate spectral difference
-    spectral_diff = np.abs(np.diff(D, axis=1))
+    # Initialize the pre-trained onset detection model
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(fps=177, pre_max=0.25, post_max=0.25, pre_avg=0.25, post_avg=0.25)
+    act = madmom.features.onsets.SpectralOnsetProcessor('spectral_diff', fps=177)(filename, start=0, stop=30)
 
-    # Sum the spectral difference over frequency bins to get a 'spectral difference function'
-    diff_sum = np.sum(spectral_diff, axis=0)
+    # Detect onsets
+    onsets = proc(act)
+    onsets = onsets * 177 / 7.075
 
-    # Detect onsets by finding peaks in the spectral difference function
-    onset_frames = librosa.util.peak_pick(diff_sum, pre_max=1, post_max=1, pre_avg=1, post_avg=1, delta=0.1, wait=0)
+    # Time vector for the audio segment
+    # time = np.linspace(0, 30, num=len(audio))
 
-    # Convert frames to time
-    onset_times = librosa.frames_to_time(onset_frames, sr=sr, hop_length=hop_length)
+    # Plot the audio waveform of the segment and detected onsets
+    # plt.figure(figsize=(14,4))
+    # plt.plot(time, audio, label='Audio Waveform (Segment)')
+    plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
+    # plt.legend()
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Amplitude')
+    # plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
+    # plt.show()
 
-    # Plotting
-    plt.figure(figsize=(14, 5))
-    librosa.display.waveshow(y, sr=sr, alpha=0.6)
-    plt.vlines(onset_times, -1, 1, color='r', linestyle='--', label='Onsets')
-    plt.xlabel('Time (s)')
-    plt.ylabel('Amplitude')
-    plt.title('Audio Waveform and Detected Onsets')
-    plt.legend()
-    plt.show()
+    return onsets
 
-    return onset_times
-
-
-# Example usage
-audio_file = '../../audio/midi_tracks/Canon_in_D.mp3'
-onset_times = onset_detection_spectral_diff_and_plot(audio_file)
+if __name__ == '__main__':
+    detected_onsets = onset_detection_spectral_diff('../../audio/midi_tracks/Canon_in_D.mp3', 512)

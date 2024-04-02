@@ -3,8 +3,17 @@ import numpy as np
 import os
 
 from pitch_recognition.poly.si_plca.si_plca_algo import transcription
+
 from oto_recognition.poly.spectral_flux import detect_onsets as spectral_flux_onset_detection
-from rhythm_recognition.poly.dbn import detect_rhythm_dbn
+from oto_recognition.poly.hfc import onset_detection_hfc
+from oto_recognition.poly.rnn import onset_detection_rnn
+from oto_recognition.poly.phase_deviation import onset_detection_phase_deviation
+from oto_recognition.poly.spectral_diff import onset_detection_spectral_diff
+from oto_recognition.poly.complex_domain import onset_detection_complex_domain
+
+from rhythm_recognition.poly.dbn import detect_beat_dbn
+from rhythm_recognition.poly.crf import detect_beat_crf
+from rhythm_recognition.poly.dynamic_programming import dynamic_programming_beat_recognition
 
 def refine_notes(piano_roll, onsets, beats):
     print('Refining piano roll...')
@@ -158,11 +167,11 @@ def find_valid_indexes_for_note_duration(beats_roll, note_duration):
 
 audio_file = os.path.abspath('audio/midi_tracks/Canon_in_D.mp3')
 sr = 44100
-plt.figure(figsize=(12, 8))
+plt.figure(figsize=(14, 4))
 
 piano_roll = transcription(audio_file, 50, 3, 1.18, 1.15, 1, 'pitch_recognition/poly/si_plca/shiftedW.mat', sr, 1, 60, 0.022, 6)
-onsets = spectral_flux_onset_detection(audio_file, sr, 248)
-beats = detect_rhythm_dbn(audio_file, 248, 60)
+onsets = onset_detection_complex_domain(audio_file, sr, 60)
+beats = detect_beat_crf(audio_file, 248, 60)
 
 refine_notes(piano_roll, onsets, beats)
 
