@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks, convolve
 from scipy.signal.windows import triang, gaussian
 from itertools import combinations
+from music21 import pitch
 
 
-def preprocess_signal(signal, sr, window_size_ms=93, hop_size_ms=9.28, zero_padding_factor=4):
+def preprocess_signal(signal, sr, window_size, hop_size, zero_padding_factor=4):
     # Convert ms to samples
-    window_size = int(sr * window_size_ms / 1000)
-    hop_size = int(sr * hop_size_ms / 1000)
+    # window_size = int(sr * window_size_ms / 1000)
+    # hop_size = int(sr * hop_size_ms / 1000)
 
     # Zero padding
     n_fft = window_size * zero_padding_factor  # Multiplying the window size by zero padding factor z
@@ -43,12 +44,14 @@ def find_harmonics(spectrum, frequencies, f0, margin):
     return harmonics
 
 
-def find_first_harmonics(spectrum, frequencies, candidate, margin, max_harmonics):
+def find_first_harmonics(spectrum, frequencies, candidate, candidate_idx, margin, max_harmonics):
     """Find the first H harmonics for a candidate, considering potential missing ones."""
-    f0 = frequencies[candidate]
-    harmonics = np.zeros(max_harmonics)  # Store amplitudes, initialized to zero
+    f0 = candidate
+    f_h = 2 * f0
+    harmonics = np.zeros(max_harmonics)  # Store amplitudes, initialized to zeros
+    harmonics[0] = candidate_idx
 
-    for i in range(max_harmonics):
+    for i in range(1, max_harmonics):  # first harmonic is the candidate itself
         lower_bound = f_h - margin
         upper_bound = f_h + margin
         # Find the peak within the margin around the harmonic frequency
@@ -58,13 +61,13 @@ def find_first_harmonics(spectrum, frequencies, candidate, margin, max_harmonics
             window = triang(2 * len(possible_peaks) + 1)[
                      len(possible_peaks) // 2:len(possible_peaks) // 2 + len(possible_peaks)]
             peak_index = possible_peaks[np.argmax(spectrum[possible_peaks] * window)]
-            harmonics.append(peak_index)
+            harmonics[i] = peak_index
             f_h = frequencies[peak_index] + f0  # Update the next harmonic frequency base
         else:
-            harmonics.append(0)
+            harmonics[i] = 0
             f_h += f0  # No peak found, skip to the next expected harmonic position
 
-    return harmonics
+    return harmonics.astype(int)
 
 
 def candidate_selection(spectrum, frequencies, f_min, f_max, epsilon, margin, max_candidates):
@@ -78,7 +81,7 @@ def candidate_selection(spectrum, frequencies, f_min, f_max, epsilon, margin, ma
         if harmonics:
             # Sum the amplitudes of harmonics to score the candidate
             amplitude_sum = sum(spectrum[harmonics])
-            candidates.append((f0, amplitude_sum))
+            candidates.append((f0, amplitude_sum, peak))
 
     # Sort candidates based on the sum of their harmonics' amplitudes
     candidates.sort(key=lambda x: x[1], reverse=True)
@@ -108,7 +111,7 @@ def evaluate_combo(combo, spectra, frequencies, margin, max_harmonics):
     return combo_score, combo_pattern
 
 
-def handle_overlapping_partials(all_candidates_harmonics, harmonic_amplitudes, harmonic_indices, spectra, cand_idx):
+def handle_overlapping_partials(all_candidates_harmonics, harmonic_amplitudes, harmonic_indices, spectra, cand_idx, frequencies, margin):
     """Adjust harmonics in case of overlaps using interpolation and modify spectra residuals."""
     start_from = None
 
@@ -117,16 +120,21 @@ def handle_overlapping_partials(all_candidates_harmonics, harmonic_amplitudes, h
             continue
 
         for j, candidates_harmonics in enumerate(all_candidates_harmonics):
-            if j != cand_idx and harmonic_index in candidates_harmonics:
-                start_from = i - 1
-                break
-        else:
-            if start_from is not None:
-                interp_values = np.interp(np.arange(start_from, i + 1), [start_from, i], [harmonic_amplitudes[start_from], harmonic_amplitudes[i]])
-                harmonic_amplitudes[start_from:i + 1] = interp_values
-                start_from = None
+            if j != cand_idx:
+                for candidate_harmonic in candidates_harmonics:
+                    lower_bound = frequencies[candidate_harmonic] - margin
+                    upper_bound = frequencies[candidate_harmonic] + margin
 
-    return harmonic_amplitudes # TODO: moja zmiana, sprawdzić
+                    if lower_bound <= frequencies[harmonic_index] <= upper_bound:
+                        start_from = i
+                        break
+                else:
+                    if start_from is not None:
+                        interp_values = np.interp(np.arange(start_from, i + 1), [start_from-1, i], [harmonic_amplitudes[start_from-1], harmonic_amplitudes[i+1]])
+                        harmonic_amplitudes[start_from:i + 1] = interp_values
+                        start_from = None
+
+    return harmonic_amplitudes
 
 
 def evaluate_candidate_smoothness(harmonics, max_index):
@@ -134,7 +142,7 @@ def evaluate_candidate_smoothness(harmonics, max_index):
     if max_index == 0:
         return 0  # No harmonics to evaluate smoothness
     p_bar = harmonics / np.max(harmonics)  # Normalize
-    gaussian_window = gaussian(3, std=1)  # Truncated Gaussian window
+    gaussian_window = [0.21, 0.58, 0.21]  # Truncated Gaussian window
     p_tilde = convolve(p_bar, gaussian_window, mode='same') / np.sum(gaussian_window)
 
     roughness = np.sum(np.abs(p_tilde - p_bar))
@@ -143,30 +151,76 @@ def evaluate_candidate_smoothness(harmonics, max_index):
 
     return smoothness
 
-def evaluate_combinations(combinations, spectra, frequencies, margin, max_harmonics, kappa):
-    best_score = 0
-    best_combination = None
+def evaluate_combinations(combinations, spectra, frequencies, margin, max_harmonics, kappa, frame_idx):
+    global frame_scores
+    frame_scores[frame_idx] = []
 
-    for combo in combinations:
+    # best_score = 0
+    # best_combination = None
+
+    for j, combo in enumerate(combinations):
         combo_scores = []
 
-        combo_harmonic_indices = [find_first_harmonics(spectra, frequencies, candidate, margin, max_harmonics) for candidate, _ in combo]
+        combo_harmonic_indices = [find_first_harmonics(spectra, frequencies, candidate, idx, margin, max_harmonics) for candidate, amp, idx in combo]
 
-        for i, (candidate, _) in enumerate(combo):
+        for i, (candidate, _, _) in enumerate(combo):
             current_candidate_harmonic_indices = combo_harmonic_indices[i]
             harmonic_amplitudes = spectra[current_candidate_harmonic_indices]
-            harmonic_amplitudes = handle_overlapping_partials(combo_harmonic_indices, harmonic_amplitudes, current_candidate_harmonic_indices, spectra, i)
+            harmonic_amplitudes = handle_overlapping_partials(combo_harmonic_indices, harmonic_amplitudes, current_candidate_harmonic_indices, spectra, i, frequencies, margin)
 
             intensity = np.sum(harmonic_amplitudes)
             smoothness = evaluate_candidate_smoothness(harmonic_amplitudes, len(current_candidate_harmonic_indices))
             combo_scores.append(score_candidate(intensity, smoothness, kappa))
 
-        combo_total_score = np.sum([score ** 2 for score in combo_scores])  # Square to emphasize higher scores
-        if combo_total_score > best_score:
-            best_score = combo_total_score
-            best_combination = combo
+        combo_notes = frequency_to_pitch([candidate for candidate, _, _ in combo])
 
-    return best_combination, best_score
+        for k, frame_data in enumerate(frame_scores[frame_idx]):
+            if frame_data['combo_notes'] == combo_notes:
+                if np.sum(combo_scores) > frame_data['score']:
+                    frame_scores[frame_idx][k]['score'] = np.sum(combo_scores)
+                break
+        else:
+            frame_scores[frame_idx].append({'combo': tuple(combo), 'combo_notes': combo_notes, 'score': np.sum(combo_scores)})
+
+    #     combo_total_score = np.sum([score ** 2 for score in combo_scores])  # Square to emphasize higher scores
+    #     if combo_total_score > best_score:
+    #         best_score = combo_total_score
+    #         best_combination = combo
+    #
+    # return best_combination, best_score
+
+
+def temporal_smoothing(frame_scores, num_frames, K):
+    # Apply temporal smoothing
+    smoothed_scores = {}
+    for frame_index in range(num_frames):
+        smoothed_scores[frame_index] = []
+        for offset in range(-K, K + 1):
+            adjacent_index = frame_index + offset
+            if 0 <= adjacent_index < num_frames:
+                for adjacent_frame_data in frame_scores[adjacent_index]:
+                    for it, smoothed_score_data in enumerate(smoothed_scores[frame_index]):
+                        if adjacent_frame_data['combo_notes'] == smoothed_score_data['combo_notes']:
+                            smoothed_scores[frame_index][it]['score'] += adjacent_frame_data['score']
+                            break
+                    else:
+                        smoothed_scores[frame_index].append({
+                            'combo': adjacent_frame_data['combo'],
+                            'combo_notes': adjacent_frame_data['combo_notes'],
+                            'score': adjacent_frame_data['score']
+                        })
+
+    # Determine best combination for each frame
+    best_combinations = {}
+    for frame_index in range(num_frames):
+        best_combinations[frame_index] = max(smoothed_scores[frame_index], key=lambda item: item['score'], default=(None, 0))
+
+    return best_combinations
+
+
+def frequency_to_pitch(frequencies):
+    """Convert a list of frequencies to musical pitches using music21."""
+    return tuple(sorted(librosa.hz_to_note(f) for f in frequencies))
 
 
 def score_candidate(intensity, smoothness, kappa=1):
@@ -184,11 +238,19 @@ if __name__ == "__main__":
     max_harmonics = 5
     max_polyphony = 3
     kappa = 1  # Weight for the smoothness evaluation
+    K = 1 # take K frames around the current frame into account
+    frame_scores = {}
 
-    f, t, Sxx = preprocess_signal(audio, fs)
-    selected_candidates = candidate_selection(Sxx[:, 0], f, f_min, f_max, epsilon, margin, max_candidates)
-    combinations = generate_combinations(selected_candidates, max_polyphony)
-    best_combination, best_score = evaluate_combinations(combinations, Sxx[:, 0], f, margin, max_harmonics, kappa)
+    f, t, Sxx = preprocess_signal(audio, fs, 4096, 409)
 
-    print(f"Best combination: {best_combination}")
-    print(f"Best score: {best_score}")
+    for i in range(Sxx.shape[1]):
+        print(f"Processing frame {i}")
+        selected_candidates = candidate_selection(Sxx[:, i], f, f_min, f_max, epsilon, margin, max_candidates)
+        combinations_arr = generate_combinations(selected_candidates, max_polyphony)
+        # best_combination, best_score = evaluate_combinations(combinations, Sxx[:, i], f, margin, max_harmonics, kappa)
+        evaluate_combinations(combinations_arr, Sxx[:, i], f, margin, max_harmonics, kappa, i)
+
+    best_combinations = temporal_smoothing(frame_scores, Sxx.shape[1], K)
+
+    print(best_combinations[0])
+
