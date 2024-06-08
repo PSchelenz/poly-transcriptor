@@ -15,7 +15,7 @@ https://www.dafx12.york.ac.uk/papers/dafx12_submission_4.pdf
 
 def onset_detection_complex_domain(filename, hop_length, max_draw_note=88):
     # Load only a segment of the audio file
-    # audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
+    audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
 
     # Save the segment to a temporary file because RNNOnsetProcessor needs a file as input
     # temp_filename = 'temp_audio_segment.wav'
@@ -30,17 +30,17 @@ def onset_detection_complex_domain(filename, hop_length, max_draw_note=88):
     onsets = onsets * 177 / 7.075
 
     # Time vector for the audio segment
-    # time = np.linspace(0, 30, num=len(audio))
+    time = np.linspace(0, 30, num=len(audio))
 
     # Plot the audio waveform of the segment and detected onsets
-    # plt.figure(figsize=(14,4))
-    # plt.plot(time, audio, label='Audio Waveform (Segment)')
+    plt.figure(figsize=(14,4))
+    plt.plot(time, audio, label='Audio Waveform (Segment)')
     plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
-    # plt.legend()
-    # plt.xlabel('Time (s)')
-    # plt.ylabel('Amplitude')
-    # plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
-    # plt.show()
+    plt.legend()
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude')
+    plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
+    plt.show()
 
     return onsets
 

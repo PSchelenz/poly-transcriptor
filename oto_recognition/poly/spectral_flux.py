@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 Paul Masri, “Computer Modeling of Sound for Transformation and Synthesis of Musical Signals”, PhD thesis, University of Bristol, 1996.
 '''
 
-def detect_onsets(filename, sr, hop_length, max_draw_note = 88):
+def detect_onsets_sf(filename, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
     # Load the audio file
-    y, sr = librosa.load(filename, duration=30, sr=sr)
+    y, sr = librosa.load(filename, sr=sr)
 
     # Compute the short-time Fourier transform (STFT)
-    D = np.abs(librosa.stft(y))
+    D = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
 
     S = librosa.amplitude_to_db(D, ref=np.max)
 
@@ -49,9 +49,9 @@ def detect_onsets(filename, sr, hop_length, max_draw_note = 88):
     # plt.tight_layout()
 
     # return onset_times
-    return onsets / 3.45
+    return onsets
 
 if __name__ == '__main__':
     # Replace 'path/to/your/music/file' with the actual path to your audio file
-    onset_times = detect_onsets('../../audio/midi_tracks/Canon_in_D.mp3')
+    onset_times = detect_onsets_sf('../../audio/midi_tracks/Canon_in_D.mp3', 44100, 512)
     plt.show()

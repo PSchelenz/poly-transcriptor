@@ -8,12 +8,12 @@ import librosa
 [2]	Florian Krebs, Sebastian Böck and Gerhard Widmer, “An Efficient State Space Model for Joint Tempo and Meter Tracking”, Proceedings of the 16th International Society for Music Information Retrieval Conference (ISMIR), 2015.
 '''
 
-def detect_beat_dbn(audio_path, hop_length, max_draw_note=88):
+def detect_beats_dbn(audio_path, sr, frame_length, hop_length=512, fps=100):
     # 1. Preprocessing: Load the audio file using madmom
-    proc = madmom.features.beats.DBNBeatTrackingProcessor(fps=177)
-    act = madmom.features.beats.RNNBeatProcessor()(audio_path, start=0, stop=30)
+    proc = madmom.features.beats.DBNBeatTrackingProcessor(fps=fps)
+    act = madmom.features.beats.RNNBeatProcessor(fps=fps)(audio_path)
     beats = proc(act)
-    beats = beats * 177 / 4
+    beats = beats * fps
     #
     # # Print detected beats
     # print("Detected Beats (in seconds):")
@@ -26,8 +26,8 @@ def detect_beat_dbn(audio_path, hop_length, max_draw_note=88):
     # librosa.display.waveshow(sound, sr=44100)
 
     # Plot the detected beats
-    for beat in beats:
-        plt.axvline(x=beat, ymin=0, ymax=max_draw_note, color='b', linestyle='-.', label='Beat' if beat == beats[0] else "")
+    # for beat in beats:
+    #     plt.axvline(x=beat, ymin=0, ymax=max_draw_note, color='b', linestyle='-.', label='Beat' if beat == beats[0] else "")
 
     # plt.legend()
     # plt.xlabel('Time (s)')
@@ -40,4 +40,4 @@ def detect_beat_dbn(audio_path, hop_length, max_draw_note=88):
 
 if __name__ == '__main__':
     audio_path = '../../audio/midi_tracks/Canon_in_D.mp3'
-    detect_beat_dbn(audio_path)
+    detect_beats_dbn(audio_path)

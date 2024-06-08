@@ -1,5 +1,3 @@
-import librosa
-
 from poly.hfc import detect_onsets_hfc
 from poly.phase_deviation import detect_onsets_pd
 from poly.spectral_flux import detect_onsets_sf
@@ -33,7 +31,7 @@ def plot_midi_with_onsets(midi_array, onsets, data_scale, scaling_correction, co
         plt.axvline(x=onset, color=color, linestyle='--', label='Onsets')
 
     plt.xlabel('Frame')
-    plt.ylabel('Amplitude')
+    plt.ylabel('Notes')
     plt.title('Detected Onsets in Polyphonic Music')
     plt.ylim(0, 90)
     plt.show()

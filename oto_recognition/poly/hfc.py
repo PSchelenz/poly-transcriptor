@@ -2,7 +2,7 @@ import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 
-def onset_detection_hfc(audio_file, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
+def detect_onsets_hfc(audio_file, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
     # Load the audio file
     y, sr = librosa.load(audio_file, sr=sr, duration=30)
 
@@ -20,12 +20,12 @@ def onset_detection_hfc(audio_file, sr=44100, hop_length=512, frame_length=2048,
     onset_env = np.diff(hfc)
     onset_env = np.maximum(0, onset_env)  # Half-wave rectification
     onset_frames = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr, units='frames', hop_length=hop_length)
-    onset_frames = onset_frames / 7.1
+    onset_frames = onset_frames
     # onset_times = librosa.frames_to_time(onset_frames, sr=sr, hop_length=hop_length)
     #
     # plt.figure(figsize=(14, 5))
     # librosa.display.waveshow(y, sr=sr, alpha=0.6)
-    plt.vlines(onset_frames, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Onsets')
+    # plt.vlines(onset_frames, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Onsets')
     # plt.xlabel('Time (s)')
     # plt.ylabel('Amplitude')
     # plt.legend()
@@ -41,4 +41,4 @@ def onset_detection_hfc(audio_file, sr=44100, hop_length=512, frame_length=2048,
 if __name__ == '__main__':
     # Example usage
     audio_file = '../../audio/midi_tracks/Canon_in_D.mp3'
-    onset_times = onset_detection_hfc(audio_file)
+    onset_times = detect_onsets_hfc(audio_file)

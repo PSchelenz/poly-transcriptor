@@ -13,7 +13,7 @@ Effects (DAFx), 2013
 https://www.dafx12.york.ac.uk/papers/dafx12_submission_4.pdf
 '''
 
-def onset_detection_spectral_diff(filename, hop_length, max_draw_note=88):
+def detect_onsets_sd(filename, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
     # Load only a segment of the audio file
     # audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
 
@@ -22,12 +22,12 @@ def onset_detection_spectral_diff(filename, hop_length, max_draw_note=88):
     # write_wave_file(audio, temp_filename, sr)
 
     # Initialize the pre-trained onset detection model
-    proc = madmom.features.onsets.OnsetPeakPickingProcessor(fps=177, pre_max=0.25, post_max=0.25, pre_avg=0.25, post_avg=0.25)
-    act = madmom.features.onsets.SpectralOnsetProcessor('spectral_diff', fps=177)(filename, start=0, stop=30)
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(smooth=0.02, pre_avg=0.1, post_avg=0.1, pre_max=0.03, post_max=0.03, combine=0.03, threshold=0.3, fps=100)
+    act = madmom.features.onsets.SpectralOnsetProcessor('spectral_diff', sample_rate=sr, frame_size=frame_length, hop_size=hop_length)(filename)
 
     # Detect onsets
     onsets = proc(act)
-    onsets = onsets * 177 / 7.075
+    onsets = onsets * 100
 
     # Time vector for the audio segment
     # time = np.linspace(0, 30, num=len(audio))
@@ -35,7 +35,7 @@ def onset_detection_spectral_diff(filename, hop_length, max_draw_note=88):
     # Plot the audio waveform of the segment and detected onsets
     # plt.figure(figsize=(14,4))
     # plt.plot(time, audio, label='Audio Waveform (Segment)')
-    plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
+    # plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
     # plt.legend()
     # plt.xlabel('Time (s)')
     # plt.ylabel('Amplitude')
@@ -45,4 +45,4 @@ def onset_detection_spectral_diff(filename, hop_length, max_draw_note=88):
     return onsets
 
 if __name__ == '__main__':
-    detected_onsets = onset_detection_spectral_diff('../../audio/midi_tracks/Canon_in_D.mp3', 512)
+    detected_onsets = detect_onsets_sd('../../audio/midi_tracks/Canon_in_D.mp3', 512)
