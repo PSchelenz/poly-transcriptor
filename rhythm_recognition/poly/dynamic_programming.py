@@ -11,7 +11,7 @@ import librosa.display
 import matplotlib.pyplot as plt
 
 
-def detect_beats_dp(audio_path, sr=44100, frame_length=2048, hop_length=512, *args):
+def detect_beats_dp(audio_path, sr=44100, frame_length=2048, hop_length=512, *args, **kwargs):
     # 1. Preprocessing: Load the audio file
     y, sr = librosa.load(audio_path, sr=sr)
 
@@ -19,7 +19,7 @@ def detect_beats_dp(audio_path, sr=44100, frame_length=2048, hop_length=512, *ar
     onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length, n_fft=frame_length)
 
     # 3. Tempo and Beat Tracking
-    tempo, beats = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr, hop_length=hop_length)
+    tempo, beats = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr, hop_length=hop_length, trim=False, start_bpm=kwargs.get('start_bpm', 120))
     beats = beats
     beat_times = librosa.frames_to_time(beats, sr=sr, hop_length=hop_length)
 

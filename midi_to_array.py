@@ -1,5 +1,5 @@
 import numpy as np
-from mido import MidiFile
+from mido import MidiFile, tick2second
 import string
 import matplotlib.pyplot as plt
 
@@ -66,7 +66,10 @@ def midi2array(filename, min_msg_pct=0.1):
     trimmed_array = all_arys[min(ends): max(ends)]
     adjusted_change_times = [time for time in all_change_times if min(ends) <= time <= max(ends)]
     adjusted_change_times = [time - min(ends) for time in adjusted_change_times]
-    return trimmed_array, adjusted_change_times[::2]
+
+    unique_change_times = np.unique(adjusted_change_times)
+    return trimmed_array, unique_change_times[::2]
+
 
 if __name__ == "__main__":
     result_array, _ = midi2array('audio/wlazl_kotek/wlazl_kotek.mid')

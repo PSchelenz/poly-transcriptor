@@ -22,7 +22,27 @@ def detect_onsets_sd(filename, sr=44100, hop_length=512, frame_length=2048, max_
     # write_wave_file(audio, temp_filename, sr)
 
     # Initialize the pre-trained onset detection model
-    proc = madmom.features.onsets.OnsetPeakPickingProcessor(smooth=0.02, pre_avg=0.1, post_avg=0.1, pre_max=0.03, post_max=0.03, combine=0.03, threshold=0.3, fps=100)
+    # wlazł kotek - 0.1, 0.1, 0.03, 0.03, 0.03, 0.3
+    # lot trzmiela - 0.08, 0.08, 0.08, 0.08, 0.07, 0.1
+    # kolysanka - 1, 1, 0.5, 0.5, 0.5, 3
+    # kolysanka 2 - 1, 1, 0.5, 0.5, 0.5, 3
+
+    pre_avg = 1
+    post_avg = 1
+    pre_max = 0.5
+    post_max = 0.5
+    combine = 0.5
+    threshold = 0.3
+
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(
+        pre_avg=pre_avg,
+        post_avg=post_avg,
+        pre_max=pre_max,
+        post_max=post_max,
+        combine=combine,
+        threshold=threshold,
+        fps=100
+    )
     act = madmom.features.onsets.SpectralOnsetProcessor('spectral_diff', sample_rate=sr, frame_size=frame_length, hop_size=hop_length)(filename)
 
     # Detect onsets

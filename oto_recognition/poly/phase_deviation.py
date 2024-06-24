@@ -13,6 +13,7 @@ Effects (DAFx), 2013
 https://www.dafx12.york.ac.uk/papers/dafx12_submission_4.pdf
 '''
 
+
 def detect_onsets_pd(filename, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
     # Load only a segment of the audio file
     # audio, sr = load_ffmpeg_file(filename, start=0, stop=30, sample_rate=44100)
@@ -22,12 +23,39 @@ def detect_onsets_pd(filename, sr=44100, hop_length=512, frame_length=2048, max_
     # write_wave_file(audio, temp_filename, sr)
 
     # Initialize the pre-trained onset detection model
-    proc = madmom.features.onsets.OnsetPeakPickingProcessor(smooth=0.02, pre_avg=0.1, post_avg=0.1, pre_max=0.03, post_max=0.03, combine=0.03, threshold=0.3, fps=100)
-    act = madmom.features.onsets.SpectralOnsetProcessor('phase_deviation', sample_rate=sr, frame_size=frame_length, hop_size=hop_length)(filename)
+    # wlazł kotek - 0.1, 0.1, 0.03, 0.03, 0.03, 0.3
+    # lot trzmiela - 0.08, 0.08, 0.08, 0.08, 0.07, 0.1
+    # kolysanka - 1.2, 1.2, 0.01, 0.01, 0.5, 0.05
+    # kolysanka 2 - 0.5, 0.5, 0.1, 0.1, 0.5, 0.03
+
+    pre_avg = 0.5
+    post_avg = 0.5
+    pre_max = 0.1
+    post_max = 0.1
+    combine = 0.5
+    threshold = 0.03
+
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(
+        pre_avg=pre_avg,
+        post_avg=post_avg,
+        pre_max=pre_max,
+        post_max=post_max,
+        combine=combine,
+        threshold=threshold,
+        fps=100
+    )
+
+    act = madmom.features.onsets.SpectralOnsetProcessor(
+        'phase_deviation',
+        sample_rate=sr,
+        frame_size=frame_length,
+        hop_size=hop_length,
+        fps=100
+    )(filename)
 
     # Detect onsets
     onsets = proc(act)
-    onsets = onsets * 100
+    onsets = onsets
 
     # Time vector for the audio segment
     # time = np.linspace(0, 30, num=len(audio))
@@ -42,7 +70,8 @@ def detect_onsets_pd(filename, sr=44100, hop_length=512, frame_length=2048, max_
     # plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
     # plt.show()
 
-    return onsets
+    return onsets * (sr / hop_length)
+
 
 if __name__ == '__main__':
     detected_onsets = detect_onsets_pd('../../audio/midi_tracks/Canon_in_D.mp3', 512)

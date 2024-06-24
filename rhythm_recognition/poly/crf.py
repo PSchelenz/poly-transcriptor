@@ -8,7 +8,7 @@ from midi_to_array import midi2array
 [1]	Filip Korzeniowski, Sebastian Böck and Gerhard Widmer, “Probabilistic Extraction of Beat Positions from a Beat Activation Function”, Proceedings of the 15th International Society for Music Information Retrieval Conference (ISMIR), 2014.
 '''
 
-def detect_beats_crf(audio_path, sr, frame_length, hop_length=512, fps=100):
+def detect_beats_crf(audio_path, sr, frame_length, hop_length=512, fps=100, **kwargs):
     # 1. Preprocessing: Load the audio file using madmom
     proc = madmom.features.beats.CRFBeatDetectionProcessor(fps=fps)
     act = madmom.features.beats.RNNBeatProcessor(fps=fps)(audio_path)
