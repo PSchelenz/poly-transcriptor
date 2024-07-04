@@ -6,7 +6,6 @@ from scipy.signal.windows import triang, gaussian
 from itertools import combinations
 from music21 import pitch
 
-
 def preprocess_signal(signal, sr, window_size, hop_size, zero_padding_factor=4):
     # Convert ms to samples
     # window_size = int(sr * window_size_ms / 1000)
@@ -279,29 +278,35 @@ def score_candidate(intensity, smoothness, kappa=1):
     return intensity * (smoothness ** kappa)
 
 
-# Example usage
-if __name__ == "__main__":
-    audio, fs = librosa.load('../../../audio/midi_tracks/Triada_C.mp3', sr=None, duration=4)
+def detect_pitch_pi2(filename, fs=44100, window_size=2048, hop_size=256, **kwargs):
+    audio, fs = librosa.load(filename, sr=fs)
     f_min, f_max = 50, 2000
     epsilon = 0.5
-    margin = 10  # Frequency margin for inharmonicity
+    margin = 20  # Frequency margin for inharmonicity
     max_candidates = 5  # Max number of candidates to select
     max_harmonics = 7
-    max_polyphony = 3
+    max_polyphony = 1
     kappa = 1.5  # Weight for the smoothness evaluation
-    K = 1 # take K frames around the current frame into account
+    K = 1  # take K frames around the current frame into account
+    global frame_scores
     frame_scores = {}
 
-    f, t, Sxx = preprocess_signal(audio, fs, 4096, 409)
+    f, t, Sxx = preprocess_signal(audio, fs, window_size, hop_size)
 
     for i in range(Sxx.shape[1]):
         print(f"Processing frame {i} of {Sxx.shape[1]}...")
         selected_candidates = candidate_selection(Sxx[:, i], f, f_min, f_max, epsilon, margin, max_candidates)
         combinations_arr = generate_combinations(selected_candidates, max_polyphony)
-        # best_combination, best_score = evaluate_combinations(combinations, Sxx[:, i], f, margin, max_harmonics, kappa)
         evaluate_combinations(combinations_arr, Sxx[:, i], f, margin, max_harmonics, kappa, i)
 
     best_combinations = temporal_smoothing(frame_scores, Sxx.shape[1], K)
+
+    return best_combinations
+
+
+# Example usage
+if __name__ == "__main__":
+    best_combinations = detect_pitch_pi2('../../../audio/midi_tracks/Triada_C.mp3', fs=44100, window_size=2048, hop_size=256)
 
     print(best_combinations[0])
 

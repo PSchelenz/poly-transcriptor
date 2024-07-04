@@ -49,9 +49,9 @@ def generalized_acf(signal, alpha=0.67):
 
 def sacf_enhancement(sacf):
     # plot sacf
-    plt.figure()
-    plt.subplot(2, 1, 1)
-    plt.plot(sacf[:len(sacf) // 2])
+    # plt.figure()
+    # plt.subplot(2, 1, 1)
+    # plt.plot(sacf[:len(sacf) // 2])
 
     # Initialize the enhanced SACF (S'(r)) to be equal to the original SACF (S(r))
     enhanced_sacf = np.copy(sacf)
@@ -78,15 +78,15 @@ def sacf_enhancement(sacf):
 
 
     # plot enhanced sacf
-    plt.subplot(2, 1, 2)
-    plt.plot(enhanced_sacf[:len(enhanced_sacf) // 2])
-    plt.title('SACF and Enhanced SACF')
-    plt.show()
+    # plt.subplot(2, 1, 2)
+    # plt.plot(enhanced_sacf[:len(enhanced_sacf) // 2])
+    # plt.title('SACF and Enhanced SACF')
+    # plt.show()
 
     return enhanced_sacf
 
 def find_f0s(sacf, fs):
-    peaks, properties = find_peaks(sacf[:len(sacf) // 2], height=np.max(sacf)*0.1)
+    peaks, properties = find_peaks(sacf[:len(sacf) // 2], height=np.max(sacf)*0.05)
     f0s = fs / peaks
     amplitudes = properties['peak_heights']
     return f0s, amplitudes
@@ -115,20 +115,20 @@ def estimate_f0s(signal, fs):
     low_freq_signal, high_freq_signal = split_signal(inverse_warped_signal, fs)
 
     # plot low and high freq signal
-    plt.figure(figsize=(14, 8))
-    plt.subplot(4, 1, 1)
-    plt.plot(signal)
-    plt.title('Signal')
-    plt.subplot(4, 1, 2)
-    plt.plot(inverse_warped_signal)
-    plt.title('Inverse Warped Signal')
-    plt.subplot(4, 1, 3)
-    plt.plot(high_freq_signal)
-    plt.title('High Frequency Signal')
-    plt.subplot(4, 1, 4)
-    plt.plot(low_freq_signal)
-    plt.title('Low Frequency Signal')
-    plt.show()
+    # plt.figure(figsize=(14, 8))
+    # plt.subplot(4, 1, 1)
+    # plt.plot(signal)
+    # plt.title('Signal')
+    # plt.subplot(4, 1, 2)
+    # plt.plot(inverse_warped_signal)
+    # plt.title('Inverse Warped Signal')
+    # plt.subplot(4, 1, 3)
+    # plt.plot(high_freq_signal)
+    # plt.title('High Frequency Signal')
+    # plt.subplot(4, 1, 4)
+    # plt.plot(low_freq_signal)
+    # plt.title('Low Frequency Signal')
+    # plt.show()
 
     low_freq_acf = generalized_acf(low_freq_signal)
     high_freq_acf = generalized_acf(np.abs(high_freq_signal))  # Envelope of high-frequency channel
@@ -175,16 +175,16 @@ def _plot(x):
     plt.plot(x)
     plt.show()
 
-# Example usage:
-fs = 44100  # Sampling rate
- # Example signal
-x = librosa.load("../../../audio/midi_tracks/Canon_in_D.mp3", sr=fs, duration=30, mono=True)[0]
-x = normalize_signal(x)
-frame_size = 6192
 
-_plot(x[2600:55000])
-frames = frame_signal(x[2600:55000], frame_size, 256)
+def detect_pitch_kt(filename, sr=44100, frame_size=2048, hop_length=512, **kwargs):
+    x = librosa.load(filename, sr=sr)[0]
+    x = normalize_signal(x)
 
-for frame in frames:
-    dominant_f0 = estimate_f0s(frame, fs)
-    print(dominant_f0)
+    frames = frame_signal(x, frame_size, hop_length)
+    dominant_f0s = []
+
+    for frame in frames:
+        dominant_f0 = estimate_f0s(frame, sr)
+        dominant_f0s.append(dominant_f0)
+
+    return dominant_f0s

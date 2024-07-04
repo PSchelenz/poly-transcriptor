@@ -21,7 +21,7 @@ def nextpow2(i):
     return n
 
 
-def transcription(filename, iter, S, sz, su, sh, model_path='shiftedW.mat', sr = 44100, min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8):
+def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path='poly/si_plca/shiftedW.mat', min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8):
     global globalY, globalPA, globalW
 
     shiftedW = sio.loadmat(model_path)['shiftedW']  # This file should be prepared beforehand
@@ -30,7 +30,7 @@ def transcription(filename, iter, S, sz, su, sh, model_path='shiftedW.mat', sr =
     W = W[:, :S, :, :]
 
     intCQT = compute_cqt(filename, sr)
-    X = intCQT[:, np.round(np.arange(0, intCQT.shape[1], 7.1128)).astype(int)].T
+    X = intCQT[:, np.round(np.arange(0, intCQT.shape[1], 7.1129)).astype(int)].T
     print('Calc noise')
     noiseLevel1 = medfilt(X.T, kernel_size=[41, 1])
     print('Calc noise2')
@@ -42,17 +42,17 @@ def transcription(filename, iter, S, sz, su, sh, model_path='shiftedW.mat', sr =
     globalPA = pitchActivity
     globalW = W
 
-    w, h, z, u, xa = mssiplca_fast(Y.T, 88, S, 5, iter, sh, sz, su, W, None, None, None, 1, pitchActivity)
+    # w, h, z, u, xa = mssiplca_fast(Y.T, 88, S, 5, iter, sh, sz, su, W, None, None, None, 1, pitchActivity)
 
-    pianoRoll = z
+    # pianoRoll = z
 
-    pianoRoll = filter_notes(pianoRoll, draw_threshold, draw_notes_longer_than)
+    # pianoRoll = filter_notes(pianoRoll, draw_threshold, draw_notes_longer_than)
 
     # plt.pcolormesh(np.arange(pianoRoll.shape[1]), np.arange(max_draw_note - min_draw_note + 1),
     #                pianoRoll[min_draw_note - 1 : max_draw_note],
     #                shading='auto', cmap='binary')
 
-    return pianoRoll[min_draw_note - 1 : max_draw_note]
+    # return pianoRoll[min_draw_note - 1 : max_draw_note]
 
 def compute_cqt(filename, sr):
     # Load audio file
@@ -410,11 +410,22 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
 
     return normalized_pianoRoll
 
+def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
+    transcription(filename, sr, frame_size, hop_length, 50, 3, 1.18, 1.15, 1)
+    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 3, 5, 50, 1.2, 1.4, 2, globalW, None, None, None, 1, globalPA)
+    pianoRoll = filter_notes(z, 0.01, 4)
+
+    #kotek 1.1 1.6 2 | 0.01 4
+    #trzmiel 1.1 1.6 2 | 0.01 4
+    #a_kiedy 1.2 1.4 2 | 0.01 4
+
+    return pianoRoll
+
 if __name__ == '__main__':
     plt.figure(figsize=(16, 8))
     ax1 = plt.subplot(2, 2, 1)
     ax1.title.set_text('SH = 1.0, SZ = 1.2, SU = 1.2')
-    z = transcription('../../../audio/midi_tracks/Canon_in_D.mp3', 50, 3, 1.18, 1.15, 1)
+    transcription('../../../audio/midi_tracks/Canon_in_D.mp3', 50, 3, 1.18, 1.15, 1)
     ax2 = plt.subplot(2, 2, 2)
     ax2.title.set_text('SH = 0.9, SZ = 1.2, SU = 1.2')
     w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 3, 5, 50, 0.9, 1.18, 1.2, globalW, None, None, None, 1, globalPA)
