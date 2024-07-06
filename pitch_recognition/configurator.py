@@ -96,7 +96,7 @@ PITCH_DETECTOR_TO_FILENAME_MAPPERS = {
     # 'kt': 'karjalainen_tolonen',
     # 'pi2': 'pi2',
     # 'cbpdn': 'conv_bpdn',
-    'siplca': 'si_plca'
+    # 'siplca': 'si_plca'
 }
 
 PITCH_DETECTOR_TO_HUMAN_READABLE = {

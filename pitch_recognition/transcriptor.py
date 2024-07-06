@@ -130,7 +130,7 @@ def detect_pitch(beats_detector_function, filename, sr=44100, frame_length=2048,
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][6]
+    TRACK = DATA_CONFIG['tracks'][3]
 
     CURR_TRACK_NAME = TRACK['name']
 
