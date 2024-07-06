@@ -4,6 +4,8 @@ from scipy.fft import fft, ifft
 import librosa
 import matplotlib.pyplot as plt
 
+from pitch_recognition.configurator import load_audio
+
 def allpass_coefficients(lambda_):
     """Generate coefficients for a first-order allpass filter."""
     return [lambda_, 1], [1, lambda_]
@@ -86,7 +88,7 @@ def sacf_enhancement(sacf):
     return enhanced_sacf
 
 def find_f0s(sacf, fs):
-    peaks, properties = find_peaks(sacf[:len(sacf) // 2], height=np.max(sacf)*0.05)
+    peaks, properties = find_peaks(sacf[:len(sacf) // 2], height=np.max(sacf)*0.01)
     f0s = fs / peaks
     amplitudes = properties['peak_heights']
     return f0s, amplitudes
@@ -177,7 +179,7 @@ def _plot(x):
 
 
 def detect_pitch_kt(filename, sr=44100, frame_size=2048, hop_length=512, **kwargs):
-    x = librosa.load(filename, sr=sr)[0]
+    x = load_audio(filename, sr)[0]
     x = normalize_signal(x)
 
     frames = frame_signal(x, frame_size, hop_length)

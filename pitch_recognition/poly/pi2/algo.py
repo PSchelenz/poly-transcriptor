@@ -6,6 +6,8 @@ from scipy.signal.windows import triang, gaussian
 from itertools import combinations
 from music21 import pitch
 
+from pitch_recognition.configurator import load_audio
+
 def preprocess_signal(signal, sr, window_size, hop_size, zero_padding_factor=4):
     # Convert ms to samples
     # window_size = int(sr * window_size_ms / 1000)
@@ -279,15 +281,15 @@ def score_candidate(intensity, smoothness, kappa=1):
 
 
 def detect_pitch_pi2(filename, fs=44100, window_size=2048, hop_size=256, **kwargs):
-    audio, fs = librosa.load(filename, sr=fs)
+    audio, fs = load_audio(filename, fs)
     f_min, f_max = 50, 2000
     epsilon = 0.5
     margin = 20  # Frequency margin for inharmonicity
-    max_candidates = 5  # Max number of candidates to select
-    max_harmonics = 7
+    max_candidates = 3  # Max number of candidates to select
+    max_harmonics = 3
     max_polyphony = 1
-    kappa = 1.5  # Weight for the smoothness evaluation
-    K = 1  # take K frames around the current frame into account
+    kappa = 1.5 # Weight for the smoothness evaluation
+    K = 3  # take K frames around the current frame into account
     global frame_scores
     frame_scores = {}
 

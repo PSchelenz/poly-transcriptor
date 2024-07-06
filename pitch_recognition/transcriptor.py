@@ -117,7 +117,6 @@ def plot_midi_with_pitches(midi_array, pitches):
 
     fig.tight_layout(h_pad=2.0)
     plt.xlabel('Ramki czasowe')
-    plt.ylabel('Dźwięki')
     plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
     plt.show()
 
@@ -131,7 +130,7 @@ def detect_pitch(beats_detector_function, filename, sr=44100, frame_length=2048,
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][0]
+    TRACK = DATA_CONFIG['tracks'][6]
 
     CURR_TRACK_NAME = TRACK['name']
 

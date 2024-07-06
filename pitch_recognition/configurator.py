@@ -1,3 +1,6 @@
+import librosa
+import numpy as np
+
 from definitions import ROOT_DIR
 import os
 
@@ -91,9 +94,9 @@ DATA_CONFIG = {
 
 PITCH_DETECTOR_TO_FILENAME_MAPPERS = {
     # 'kt': 'karjalainen_tolonen',
-    'pi2': 'pi2',
+    # 'pi2': 'pi2',
     # 'cbpdn': 'conv_bpdn',
-    # 'siplca': 'si_plca'
+    'siplca': 'si_plca'
 }
 
 PITCH_DETECTOR_TO_HUMAN_READABLE = {
@@ -112,3 +115,8 @@ tracks_qpm = {
     'kolysanka': 60,
     'a_kiedy': 146,
 }
+
+def load_audio(filename, sr=44100):
+    signal, fs = librosa.load(filename, sr=sr)
+
+    return np.trim_zeros(signal), fs
