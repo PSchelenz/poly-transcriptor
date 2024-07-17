@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import librosa
 import scipy.io as sio
@@ -10,7 +12,7 @@ import warnings
 import matplotlib.pyplot as plt
 import pathlib
 
-from pitch_recognition.configurator import load_audio
+from pitch_recognition.configurator import load_audio, ROOT_DIR
 
 globalY = None
 globalPA = None
@@ -22,12 +24,35 @@ def nextpow2(i):
     while n < i: n *= 2
     return n
 
+def _plot(arr):
+    for note in range(0, 88):
+        plotting = arr[2, note, :, 0]
+        plt.plot(plotting)
+        plt.show()
 
-def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path='poly/si_plca/shiftedW.mat', min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8):
+
+def calculate_weights(arr):
+    # Ensure the input array has the correct shape
+    if arr.shape != (4, 88, 545, 3):
+        raise ValueError("Input array must have shape (4, 88, 545, 3)")
+
+    # Initialize an empty array to store the weights
+    weights = np.zeros_like(arr)
+
+    # Calculate weights separately for each channel
+    for channel in range(3):
+        channel_sum = np.sum(arr[:, :, :, channel], axis=2, keepdims=True)
+        weights[:, :, :, channel] = arr[:, :, :, channel] / channel_sum
+
+    return weights
+
+
+def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path=os.path.join(ROOT_DIR, 'pitch_recognition/poly/si_plca/shiftedW'), min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8):
     global globalY, globalPA, globalW
 
-    shiftedW = sio.loadmat(model_path)['shiftedW']  # This file should be prepared beforehand
-    pitchActivity = np.array([[1, 1, 1], [88, 88, 88]]).T
+    # shiftedW = sio.loadmat(model_path)['shiftedW']
+    shiftedW = np.load(os.path.join(ROOT_DIR, 'audio/piano/remastered_v2/notes/piano_template_7r.npy'))
+    pitchActivity = np.array([[1] * S, [88] * S]).T
     W = np.transpose(shiftedW, (2, 3, 1, 0))
     W = W[:, :S, :, :]
 
@@ -413,9 +438,9 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
     return normalized_pianoRoll
 
 def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
-    transcription(filename, sr, frame_size, hop_length, 50, 3, 1.18, 1.15, 1)
-    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 3, 5, 50, 1.5, 1.5, 2, globalW, None, None, None, 1, globalPA)
-    pianoRoll = filter_notes(z, 0.06, 4)
+    transcription(filename, sr, frame_size, hop_length, 50, 7, 1.18, 1.15, 1)
+    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 7, 4, 50, 1.5, 1.1, 2, globalW, None, None, None, 1, globalPA)
+    pianoRoll = filter_notes(z, 0.15, 4)
 
     #kotek 1.1 1.6 2 | 0.01 4
     #trzmiel 1.1 1.6 2 | 0.01 4
