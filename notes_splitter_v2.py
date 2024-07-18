@@ -6,13 +6,25 @@ def process_audio(file_path, sample_rate=44100):
     # Load the audio file
     y, sr = librosa.load(file_path, sr=sample_rate)
 
-    # Define note durations and silences
-    note_ranges = [
+    piano_note_ranges = [
         {'range': range(0, 19), 'duration': 4, 'silence': 2},  # A0 to F#2
         {'range': range(19, 52), 'duration': 3, 'silence': 1},  # G2 to E5
         {'range': range(52, 70), 'duration': 2, 'silence': 2},  # F5 to F#6
         {'range': range(70, 88), 'duration': 1, 'silence': 3}  # G6 to C8
     ]
+
+    guitar_note_ranges = [
+        {'range': range(0, 33), 'duration': 3, 'silence': 1},
+        {'range': range(33, 44), 'duration': 2, 'silence': 2}
+    ]
+
+    viola_note_ranges = [
+        {'range': range(0, 25), 'duration': 3, 'silence': 1},
+        {'range': range(25, 46), 'duration': 2, 'silence': 2}
+    ]
+
+    # Define note durations and silences
+    note_ranges = piano_note_ranges
 
     features_count = 3
 
