@@ -83,6 +83,9 @@ def plot_midi_with_pitches(midi_array, pitches):
     if pitch_method == 'siplca':
         pitches_padded = np.zeros_like(pitches)
         pitches_padded[pitches > 0] = 1
+
+        if pitches_padded.shape != midi_array_scaled.shape:
+            pitches_padded = np.pad(pitches_padded, ((0, 0), (0, 88 - (midi_array_scaled.shape[1] - pitches_padded.shape[1]))))
     else:
         pitches_padded = pad_uneven_array(pitches, midi_array_scaled.shape)
 
@@ -130,7 +133,7 @@ def detect_pitch(beats_detector_function, filename, sr=44100, frame_length=2048,
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][0]
+    TRACK = DATA_CONFIG['tracks'][3]
 
     CURR_TRACK_NAME = TRACK['name']
 

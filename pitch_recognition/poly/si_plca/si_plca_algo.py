@@ -31,28 +31,12 @@ def _plot(arr):
         plt.show()
 
 
-def calculate_weights(arr):
-    # Ensure the input array has the correct shape
-    if arr.shape != (4, 88, 545, 3):
-        raise ValueError("Input array must have shape (4, 88, 545, 3)")
-
-    # Initialize an empty array to store the weights
-    weights = np.zeros_like(arr)
-
-    # Calculate weights separately for each channel
-    for channel in range(3):
-        channel_sum = np.sum(arr[:, :, :, channel], axis=2, keepdims=True)
-        weights[:, :, :, channel] = arr[:, :, :, channel] / channel_sum
-
-    return weights
-
-
-def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path=os.path.join(ROOT_DIR, 'pitch_recognition/poly/si_plca/shiftedW'), min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8):
+def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path=os.path.join(ROOT_DIR, 'pitch_recognition/poly/si_plca/shiftedW'), min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8, notes_count = 88):
     global globalY, globalPA, globalW
 
     # shiftedW = sio.loadmat(model_path)['shiftedW']
-    shiftedW = np.load(os.path.join(ROOT_DIR, 'audio/piano/remastered_v2/notes/piano_template_7r.npy'))
-    pitchActivity = np.array([[1] * S, [88] * S]).T
+    shiftedW = np.load(os.path.join(ROOT_DIR, f'audio/piano/remastered_v2/notes/guitar_template_{S}r.npy'))
+    pitchActivity = np.array([[1] * S, [notes_count] * S]).T
     W = np.transpose(shiftedW, (2, 3, 1, 0))
     W = W[:, :S, :, :]
 
@@ -438,13 +422,17 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
     return normalized_pianoRoll
 
 def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
-    transcription(filename, sr, frame_size, hop_length, 50, 7, 1.18, 1.15, 1)
-    w, h, z, u, xa = mssiplca_fast(globalY.T, 88, 7, 4, 50, 1.5, 1.1, 2, globalW, None, None, None, 1, globalPA)
-    pianoRoll = filter_notes(z, 0.15, 4)
+    R = 3
+    notes_count = 44
+    transcription(filename, sr, frame_size, hop_length, 50, R, 1.18, 1.15, 1, notes_count=notes_count)
+    w, h, z, u, xa = mssiplca_fast(globalY.T, notes_count, R, 4, 50, 1.2, 1.4, 2, globalW, None, None, None, 1, globalPA)
+    pianoRoll = filter_notes(z, 0.01, 4)
 
     #kotek 1.1 1.6 2 | 0.01 4
     #trzmiel 1.1 1.6 2 | 0.01 4
-    #a_kiedy 1.2 1.4 2 | 0.01 4
+    #a_kiedy_piano 1.2 1.4 2 | 0.01 4
+    #a_kiedy_guitar 1.2 1.4 2 | 0.01 4
+    #a_kiedy_viola
     #juice-mono 1.5, 1.5, 2 | 0.06 4
     #juice-harmony 1 0.95 2 | 0.1 4
     #juice-dissonance 1.5 1.19 2 | 0.025 4
