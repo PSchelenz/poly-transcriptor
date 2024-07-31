@@ -17,6 +17,7 @@ from pitch_recognition.configurator import load_audio, ROOT_DIR
 globalY = None
 globalPA = None
 globalW = None
+characteristics = 256
 
 
 def nextpow2(i):
@@ -31,23 +32,31 @@ def _plot(arr):
         plt.show()
 
 
-def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path=os.path.join(ROOT_DIR, 'pitch_recognition/poly/si_plca/shiftedW'), min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8, notes_count = 88):
-    global globalY, globalPA, globalW
+def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, model_path=os.path.join(ROOT_DIR, 'pitch_recognition/poly/si_plca/shiftedW'), min_draw_note = 1, max_draw_note = 60, draw_threshold = 0.01, draw_notes_longer_than = 8, notes_count = 88, instrument = 'piano'):
+    global globalY, globalPA, globalW, characteristics
 
     # shiftedW = sio.loadmat(model_path)['shiftedW']
-    shiftedW = np.load(os.path.join(ROOT_DIR, f'audio/piano/remastered_v2/notes/guitar_template_{S}r.npy'))
+    shiftedW = np.load(os.path.join(ROOT_DIR, f'audio/piano/remastered_v2/notes/{instrument}_template_{S}r.npy'))
     pitchActivity = np.array([[1] * S, [notes_count] * S]).T
     W = np.transpose(shiftedW, (2, 3, 1, 0))
     W = W[:, :S, :, :]
 
-    intCQT = compute_cqt(filename, sr)
-    X = intCQT[:, np.round(np.arange(0, intCQT.shape[1], 7.1129)).astype(int)].T
-    print('Calc noise')
-    noiseLevel1 = medfilt(X.T, kernel_size=[41, 1])
-    print('Calc noise2')
-    noiseLevel2 = medfilt(np.minimum(X.T, noiseLevel1), kernel_size=[41, 1])
-    X = np.maximum(X - noiseLevel2.T, 0)
-    Y = X[::4, :]  # 40ms step
+    characteristics = W.shape[0]
+
+    samples = load_audio(filename, sr)[0]
+
+    Y = np.abs(librosa.cqt(samples, sr=sr, n_bins=66 * 4,
+                       fmin=82.41,
+                       bins_per_octave=12 * 4)).T
+
+    # intCQT = compute_cqt(filename, sr)
+    # X = intCQT[:, np.round(np.arange(0, intCQT.shape[1], 7.1129)).astype(int)].T
+    # print('Calc noise')
+    # noiseLevel1 = medfilt(X.T, kernel_size=[41, 1])
+    # print('Calc noise2')
+    # noiseLevel2 = medfilt(np.minimum(X.T, noiseLevel1), kernel_size=[41, 1])
+    # X = np.maximum(X - noiseLevel2.T, 0)
+    Y = Y[::4, :]  # 40ms step
 
     globalY = Y
     globalPA = pitchActivity
@@ -79,7 +88,7 @@ def compute_cqt(filename, sr):
         fs = sr
 
     # Compute CQT
-    Xcqt = cqt(y, 27.5, fs / 3, 60, fs, q=0.80, atomHopFactor=0.3, thresh=0.0005, win='hann')
+    Xcqt = cqt(y, 82.41, fs / 3, 66, fs, q=0.8, atomHopFactor=0.3, thresh=0.0005, win='hann')
 
     # Obtain absolute CQT (assuming a getCQT function exists)
     absCQT = getCQT(Xcqt, 'all', 'all')
@@ -98,7 +107,7 @@ def compute_cqt(filename, sr):
         upperLim = len(outputTimeVec)
 
     # Final cropped CQT
-    intCQT = absCQT[55:600, lowerLim:upperLim]
+    intCQT = absCQT[:characteristics, lowerLim:upperLim]
 
     return intCQT
 
@@ -424,8 +433,9 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
 def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
     R = 3
     notes_count = 44
-    transcription(filename, sr, frame_size, hop_length, 50, R, 1.18, 1.15, 1, notes_count=notes_count)
-    w, h, z, u, xa = mssiplca_fast(globalY.T, notes_count, R, 4, 50, 1.2, 1.4, 2, globalW, None, None, None, 1, globalPA)
+    instrument = 'guitar'
+    transcription(filename, sr, frame_size, hop_length, 50, R, 1.18, 1.15, 1, notes_count=notes_count, instrument=instrument)
+    w, h, z, u, xa = mssiplca_fast(globalY.T, notes_count, R, 4, 50, 1.1, 1.1, 2, globalW, None, None, None, 1, globalPA)
     pianoRoll = filter_notes(z, 0.01, 4)
 
     #kotek 1.1 1.6 2 | 0.01 4

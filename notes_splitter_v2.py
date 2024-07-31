@@ -3,7 +3,7 @@ import librosa
 
 
 def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', features_count: int = 3,
-                  template_characteristics_count: int = 545, bins_per_octave: int = 74):
+                  frequency_resolution_multiplier: int = 1):
     # Load the audio file
     y, sr = librosa.load(file_path, sr=sample_rate)
 
@@ -17,10 +17,11 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     piano_attack = (2112, 2205)
     piano_decay = (4410, 8820)
     piano_release = (2205, 4410)
+    piano_fmin = 27.5
 
     piano_notes_count = 88
 
-    piano_config = [piano_note_ranges, piano_attack, piano_decay, piano_release, piano_notes_count]
+    piano_config = [piano_note_ranges, piano_attack, piano_decay, piano_release, piano_notes_count, piano_fmin]
 
     guitar_note_ranges = [
         {'range': range(0, 33), 'duration': 3, 'silence': 1},
@@ -30,10 +31,11 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     guitar_attack = (1090, 2205)
     guitar_decay = (4410, 8820)
     guitar_release = (2205, 4410)
+    guitar_fmin = 82.41
 
     guitar_notes_count = 44
 
-    guitar_config = [guitar_note_ranges, guitar_attack, guitar_decay, guitar_release, guitar_notes_count]
+    guitar_config = [guitar_note_ranges, guitar_attack, guitar_decay, guitar_release, guitar_notes_count, guitar_fmin]
 
     viola_note_ranges = [
         {'range': range(0, 25), 'duration': 3, 'silence': 1},
@@ -43,10 +45,11 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     viola_attack = (2112, 2205)
     viola_decay = (4410, 8820)
     viola_release = (4410, 16384)
+    viola_fmin = 130.81
 
     viola_notes_count = 46
 
-    viola_config = [viola_note_ranges, viola_attack, viola_decay, viola_release, viola_notes_count]
+    viola_config = [viola_note_ranges, viola_attack, viola_decay, viola_release, viola_notes_count, viola_fmin]
 
     configs = {
         'piano': piano_config,
@@ -55,7 +58,7 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     }
 
     # Define note durations and silences
-    note_ranges, attack_range, decay_range, release_range, notes_count = configs[config_name]
+    note_ranges, attack_range, decay_range, release_range, notes_count, fmin = configs[config_name]
     # Define stage durations in samples
     stage_ranges = {
         'attack': np.linspace(attack_range[0], attack_range[1], features_count).astype(int),
@@ -64,12 +67,14 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     }
 
     # Initialize the result matrix
-    result = np.zeros((4, notes_count, template_characteristics_count, features_count))
+    templates_characteristics_count = (notes_count + notes_count // 2) * frequency_resolution_multiplier
+    result = np.zeros((4, notes_count, templates_characteristics_count, features_count))
 
     def calculate_cqt(samples):
         # Calculate CQT
-        cqt = np.abs(librosa.cqt(samples, sr=sample_rate, n_bins=template_characteristics_count,
-                                 bins_per_octave=bins_per_octave))
+        cqt = np.abs(librosa.cqt(samples, sr=sample_rate, n_bins=templates_characteristics_count,
+                                 fmin=fmin,
+                                 bins_per_octave=12 * frequency_resolution_multiplier))
         return cqt
 
     # Process notes
@@ -123,16 +128,14 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     return weights
 
 
-instrument = 'viola'
-rmodels = 7
-template_characteristics = 545
-bins_per_octave = 74
+instrument = 'guitar'
+rmodels = 3
+frequency_resolution_multiplier = 4
 
 file_path = f'audio/piano/remastered_v2/notes_{instrument}_long.wav'
-result_matrix = process_audio(file_path, config_name=instrument, features_count=rmodels,
-                              template_characteristics_count=template_characteristics, bins_per_octave=bins_per_octave)
+result_matrix = process_audio(file_path, config_name=instrument, features_count=rmodels, frequency_resolution_multiplier=frequency_resolution_multiplier)
 
 # Save the result
 np.save(f'audio/piano/remastered_v2/notes/{instrument}_template_{rmodels}r.npy', result_matrix)
 print("Matrix shape:", result_matrix.shape)
-print("Matrix saved as piano_template_3r.npy")
+print(f"Matrix saved as {instrument}_template_{rmodels}r.npy")
