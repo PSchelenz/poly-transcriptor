@@ -17,7 +17,7 @@ from pitch_recognition.configurator import load_audio, ROOT_DIR
 globalY = None
 globalPA = None
 globalW = None
-characteristics = 256
+characteristics = 276
 
 
 def nextpow2(i):
@@ -46,7 +46,7 @@ def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, mod
     samples = load_audio(filename, sr)[0]
 
     Y = np.abs(librosa.cqt(samples, sr=sr, n_bins=66 * 4,
-                       fmin=82.41,
+                       fmin=130.81,
                        bins_per_octave=12 * 4)).T
 
     # intCQT = compute_cqt(filename, sr)
@@ -432,8 +432,8 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
 
 def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
     R = 3
-    notes_count = 44
-    instrument = 'guitar'
+    notes_count = 46
+    instrument = 'viola'
     transcription(filename, sr, frame_size, hop_length, 50, R, 1.18, 1.15, 1, notes_count=notes_count, instrument=instrument)
     w, h, z, u, xa = mssiplca_fast(globalY.T, notes_count, R, 4, 50, 1.1, 1.1, 2, globalW, None, None, None, 1, globalPA)
     pianoRoll = filter_notes(z, 0.01, 4)
@@ -441,7 +441,7 @@ def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, *
     #kotek 1.1 1.6 2 | 0.01 4
     #trzmiel 1.1 1.6 2 | 0.01 4
     #a_kiedy_piano 1.2 1.4 2 | 0.01 4
-    #a_kiedy_guitar 1.2 1.4 2 | 0.01 4
+    #a_kiedy_guitar 1.1 1.1 2 | 0.01 4
     #a_kiedy_viola
     #juice-mono 1.5, 1.5, 2 | 0.06 4
     #juice-harmony 1 0.95 2 | 0.1 4
