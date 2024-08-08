@@ -88,7 +88,7 @@ def sacf_enhancement(sacf):
     return enhanced_sacf
 
 def find_f0s(sacf, fs):
-    peaks, properties = find_peaks(sacf[:len(sacf) // 2], height=np.max(sacf)*0.01)
+    peaks, properties = find_peaks(sacf[:len(sacf) // 2], height=np.max(sacf)*0.4)
     f0s = fs / peaks
     amplitudes = properties['peak_heights']
     return f0s, amplitudes
@@ -178,11 +178,12 @@ def _plot(x):
     plt.show()
 
 
-def detect_pitch_kt(filename, sr=44100, frame_size=2048, hop_length=512, **kwargs):
+def detect_pitch_kt(filename, sr=44100, hop_length=512, frame_size=2048, **kwargs):
     x = load_audio(filename, sr)[0]
     x = normalize_signal(x)
 
     frames = frame_signal(x, frame_size, hop_length)
+
     dominant_f0s = []
 
     for frame in frames:

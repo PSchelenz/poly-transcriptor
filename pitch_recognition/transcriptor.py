@@ -2,7 +2,8 @@ from definitions import ROOT_DIR
 from midi_to_array import midi2array
 from poly.cbpdn.cbpdn_algo_v2 import detect_pitch_cbpdn
 from poly.pi2.algo import detect_pitch_pi2
-from poly.karjalainen_tolonen.algo import detect_pitch_kt
+# from poly.karjalainen_tolonen.algo import detect_pitch_kt
+from poly.karjalainen_tolonen.algo_v2 import detect_pitch_kt
 from poly.si_plca.si_plca_algo import detect_pitch_siplca
 from pitch_recognition.configurator import DATA_CONFIG, PITCH_DETECTOR_TO_FILENAME_MAPPERS, \
     PITCH_DETECTOR_TO_HUMAN_READABLE
@@ -78,6 +79,7 @@ def calculate_intersection(correct_array, predicted_array):
 def plot_midi_with_pitches(midi_array, pitches):
     global pitch_method
 
+    pitches = np.array(pitches)[:]
     midi_array_scaled = scale_array(midi_array, len(pitches))
 
     if pitch_method == 'siplca':
@@ -85,7 +87,7 @@ def plot_midi_with_pitches(midi_array, pitches):
         pitches_padded[pitches > 0] = 1
 
         if pitches_padded.shape != midi_array_scaled.shape:
-            pitches_padded = np.pad(pitches_padded, ((0, 0), (0, 88 - (midi_array_scaled.shape[1] - pitches_padded.shape[1]))))
+            pitches_padded = np.pad(pitches_padded, ((0, 0), (0, 88 - pitches_padded.shape[1])))
     else:
         pitches_padded = pad_uneven_array(pitches, midi_array_scaled.shape)
 
@@ -120,7 +122,7 @@ def plot_midi_with_pitches(midi_array, pitches):
 
     fig.tight_layout(h_pad=2.0)
     plt.xlabel('Ramki czasowe')
-    plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
+    # plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
     plt.show()
 
     print(metrics)
@@ -133,7 +135,7 @@ def detect_pitch(beats_detector_function, filename, sr=44100, frame_length=2048,
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][4]
+    TRACK = DATA_CONFIG['tracks'][8]
 
     CURR_TRACK_NAME = TRACK['name']
 
@@ -162,7 +164,7 @@ if __name__ == '__main__':
                                sample_rate,
                                frame_length=frame_length,
                                hop_length=hop_length,
-                               save_pickle=True)
+                               save_pickle=False)
 
         if pitch_method == 'kt':
             for f, frame in enumerate(pitches):

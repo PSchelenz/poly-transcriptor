@@ -28,7 +28,7 @@ def merge_spectral_arrays(*arrays):
     return merged_array
 
 def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', features_count: int = 3,
-                  frequency_resolution_multiplier: int = 1, skip_notes: int = 0):
+                  frequency_resolution_multiplier: int = 1):
     # Load the audio file
     y, sr = librosa.load(file_path, sr=sample_rate)
 
@@ -36,7 +36,7 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
         {'range': range(0, 19), 'duration': 4, 'silence': 2},  # A0 to F#2
         {'range': range(19, 52), 'duration': 3, 'silence': 1},  # G2 to E5
         {'range': range(52, 70), 'duration': 2, 'silence': 2},  # F5 to F#6
-        {'range': range(70, 73), 'duration': 1, 'silence': 3}  # G6 to C8
+        {'range': range(70, 88), 'duration': 1, 'silence': 3}  # G6 to C8
     ]
 
     piano_attack = (2112, 2205)
@@ -44,7 +44,7 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     piano_release = (2205, 4410)
     piano_fmin = 27.5
 
-    piano_notes_count = 73
+    piano_notes_count = 88
 
     piano_config = [piano_note_ranges, piano_attack, piano_decay, piano_release, piano_notes_count, piano_fmin]
 
@@ -92,8 +92,8 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     }
 
     # Initialize the result matrix
-    templates_characteristics_count = 66 * frequency_resolution_multiplier # (notes_count + notes_count // 2) * frequency_resolution_multiplier
-    result = np.zeros((4, 88, templates_characteristics_count, features_count))
+    templates_characteristics_count = notes_count * frequency_resolution_multiplier
+    result = np.zeros((4, notes_count, templates_characteristics_count, features_count))
 
     def calculate_cqt(samples):
         # Calculate CQT
@@ -105,11 +105,9 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     # Process notes
     current_pos = 0
     for note_idx in range(notes_count):
-        actual_note_idx = note_idx
-        note_idx = note_idx + skip_notes  # correction for multi instrument files
         # Determine the current note range
         print(f'{note_idx} / {notes_count}')
-        current_range = next(r for r in note_ranges if actual_note_idx in r['range'])
+        current_range = next(r for r in note_ranges if note_idx in r['range'])
         duration = current_range['duration']
         silence = current_range['silence']
 
@@ -155,28 +153,16 @@ def process_audio(file_path, sample_rate=44100, config_name: str = 'piano', feat
     return weights
 
 
-instruments = ['piano', 'guitar', 'viola']
+instrument = 'piano'
 frequency_resolution_multiplier = 4
 rmodels = 7
-stacked_matrix = []
 
-for instrument in instruments:
-    skip_notes = 0
-    file_path = f'audio/piano/remastered_v2/notes_{instrument}_long.wav'
+file_path = f'audio/piano/remastered_v2/notes_{instrument}_long.wav'
 
-    if instrument == 'guitar':
-        skip_notes = 19
-    elif instrument == 'viola':
-        skip_notes = 27
-
-    result_matrix = process_audio(file_path, config_name=instrument, features_count=rmodels,
-                                  frequency_resolution_multiplier=frequency_resolution_multiplier, skip_notes=skip_notes)
-
-    stacked_matrix.append(result_matrix)
+result_matrix = process_audio(file_path, config_name=instrument, features_count=rmodels,
+                              frequency_resolution_multiplier=frequency_resolution_multiplier)
 
 # Save the result
-result_matrix = merge_spectral_arrays(*stacked_matrix)
-
-np.save(f'audio/piano/remastered_v2/notes/all_template_{rmodels}r.npy', result_matrix)
+np.save(f'audio/piano/remastered_v2/notes/{instrument}_template_{rmodels}r.npy', result_matrix)
 print("Matrix shape:", result_matrix.shape)
-print(f"Matrix saved as all_template_{rmodels}r.npy")
+print(f"Matrix saved as {instrument}_template_{rmodels}r.npy")

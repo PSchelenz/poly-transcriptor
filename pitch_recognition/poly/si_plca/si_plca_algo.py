@@ -17,7 +17,9 @@ from pitch_recognition.configurator import load_audio, ROOT_DIR
 globalY = None
 globalPA = None
 globalW = None
-characteristics = 276
+notes_count = 88
+min_freq = 27.5
+characteristics = 264
 
 
 def nextpow2(i):
@@ -45,8 +47,8 @@ def transcription(filename, sr, frame_size, hop_length, iter, S, sz, su, sh, mod
 
     samples = load_audio(filename, sr)[0]
 
-    Y = np.abs(librosa.cqt(samples, sr=sr, n_bins=66 * 4,
-                       fmin=130.81,
+    Y = np.abs(librosa.cqt(samples, sr=sr, n_bins=(notes_count + notes_count//2) * 4,
+                       fmin=27.5,
                        bins_per_octave=12 * 4)).T
 
     # intCQT = compute_cqt(filename, sr)
@@ -88,7 +90,7 @@ def compute_cqt(filename, sr):
         fs = sr
 
     # Compute CQT
-    Xcqt = cqt(y, 82.41, fs / 3, 66, fs, q=0.8, atomHopFactor=0.3, thresh=0.0005, win='hann')
+    Xcqt = cqt(y, 27.5, fs / 3, 60, fs, q=0.8, atomHopFactor=0.3, thresh=0.0005, win='hann')
 
     # Obtain absolute CQT (assuming a getCQT function exists)
     absCQT = getCQT(Xcqt, 'all', 'all')
@@ -431,21 +433,26 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
     return normalized_pianoRoll
 
 def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
-    R = 3
-    notes_count = 46
-    instrument = 'viola'
-    transcription(filename, sr, frame_size, hop_length, 50, R, 1.18, 1.15, 1, notes_count=notes_count, instrument=instrument)
-    w, h, z, u, xa = mssiplca_fast(globalY.T, notes_count, R, 4, 50, 1.1, 1.1, 2, globalW, None, None, None, 1, globalPA)
-    pianoRoll = filter_notes(z, 0.01, 4)
+    global notes_count, min_freq
 
-    #kotek 1.1 1.6 2 | 0.01 4
-    #trzmiel 1.1 1.6 2 | 0.01 4
-    #a_kiedy_piano 1.2 1.4 2 | 0.01 4
-    #a_kiedy_guitar 1.1 1.1 2 | 0.01 4
-    #a_kiedy_viola
-    #juice-mono 1.5, 1.5, 2 | 0.06 4
-    #juice-harmony 1 0.95 2 | 0.1 4
-    #juice-dissonance 1.5 1.19 2 | 0.025 4
+    R = 7
+    notes_count = 46
+    min_freq = 130
+    instrument = 'viola'
+
+    transcription(filename, sr, frame_size, hop_length, 50, R, 1.18, 1.15, 1, notes_count=notes_count, instrument=instrument)
+    w, h, z, u, xa = mssiplca_fast(globalY.T, notes_count, R, 4, 50, 1.1, 1.2, 2, globalW, None, None, None, 1, globalPA)
+    pianoRoll = filter_notes(z, 0.05, 1)
+
+    #kotek 1.1 1.2 2 | 0.05 1
+    #trzmiel 1.1 1.2 2 | 0.05 1
+    #a_kiedy_piano 1.1 1.2 2 | 0.001 1
+    #a_kiedy_guitar 1.1 1.2 2 | 0.01 1
+    #a_kiedy_viola 1.1 1.2 2 | 0.01 1
+    #a_kiedy_all 1.1 1.2 2 | 0.05 1
+    #juice-mono 1.1, 1.2, 2 | 0.05 1
+    #juice-harmony 1.1 1.1 2 | 0.001 1
+    #juice-dissonance 1.1 1.1 2 | 0.001 1
 
     return pianoRoll
 
