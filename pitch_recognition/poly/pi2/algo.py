@@ -225,11 +225,11 @@ def evaluate_combinations(combinations, spectra, frequencies, margin, max_harmon
         # TODO: odejmowanie części wyniku o 7% za każdą dodatkową nutę w akordzie całkiem nieźle poprawia algorytm
         for k, frame_data in enumerate(frame_scores[frame_idx]):
             if frame_data['combo_notes'] == combo_notes:
-                if np.sum(combo_scores) * (1 - (0.07 * (len(frame_data['combo_notes']) - 1))) > frame_data['score']: # TODO: zmienić spowrotem na np.sum(combo_scores)
-                    frame_scores[frame_idx][k]['score'] = np.sum(combo_scores) * (1 - (0.07 * (len(frame_data['combo_notes']) - 1))) # TODO: zmienić spowrotem na np.sum(combo_scores)
+                if np.sum(combo_scores) > frame_data['score']: # TODO: zmienić spowrotem na np.sum(combo_scores)
+                    frame_scores[frame_idx][k]['score'] = np.sum(combo_scores) # TODO: zmienić spowrotem na np.sum(combo_scores)
                 break
         else:
-            frame_scores[frame_idx].append({'combo': tuple(combo), 'combo_notes': combo_notes, 'score': np.sum(combo_scores) * (1 - (0.07 * (len(combo_notes) - 1)))}) # TODO: zmienić spowrotem na np.sum(combo_scores)
+            frame_scores[frame_idx].append({'combo': tuple(combo), 'combo_notes': combo_notes, 'score': np.sum(combo_scores)}) # TODO: zmienić spowrotem na np.sum(combo_scores)
 
     #     combo_total_score = np.sum([score ** 2 for score in combo_scores])  # Square to emphasize higher scores
     #     if combo_total_score > best_score:
@@ -280,16 +280,16 @@ def score_candidate(intensity, smoothness, kappa=1):
     return intensity * (smoothness ** kappa)
 
 
-def detect_pitch_pi2(filename, fs=44100, window_size=2048, hop_size=256, **kwargs):
+def detect_pitch_pi2(filename, fs=44100, hop_size=256, window_size=2048, **kwargs):
     audio, fs = load_audio(filename, fs)
     f_min, f_max = 50, 2000
     epsilon = 0.5
     margin = 20  # Frequency margin for inharmonicity
-    max_candidates = 3  # Max number of candidates to select
-    max_harmonics = 3
-    max_polyphony = 1
-    kappa = 1.5 # Weight for the smoothness evaluation
-    K = 3  # take K frames around the current frame into account
+    max_candidates = 7  # 5, 5, 5, 5, 5, 5, 3
+    max_harmonics = 5 # 5, 5, 5, 5, 5, 5, 5
+    max_polyphony = 5 # 1, 5, 3, 3, 3, 3, 1
+    kappa = 1 # Weight for the smoothness evaluation
+    K = 2  # take K frames around the current frame into account
     global frame_scores
     frame_scores = {}
 

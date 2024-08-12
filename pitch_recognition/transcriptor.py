@@ -2,6 +2,7 @@ from definitions import ROOT_DIR
 from midi_to_array import midi2array
 from poly.cbpdn.cbpdn_algo_v2 import detect_pitch_cbpdn
 from poly.pi2.algo import detect_pitch_pi2
+# from poly.pi2.algo_v2 import detect_pitch_pi2
 # from poly.karjalainen_tolonen.algo import detect_pitch_kt
 from poly.karjalainen_tolonen.algo_v2 import detect_pitch_kt
 from poly.si_plca.si_plca_algo import detect_pitch_siplca
@@ -79,6 +80,8 @@ def calculate_intersection(correct_array, predicted_array):
 def plot_midi_with_pitches(midi_array, pitches):
     global pitch_method
 
+    pitches = np.array(pitches)[:-6]
+
     pitches = np.array(pitches)[:]
     midi_array_scaled = scale_array(midi_array, len(pitches))
 
@@ -122,7 +125,7 @@ def plot_midi_with_pitches(midi_array, pitches):
 
     fig.tight_layout(h_pad=2.0)
     plt.xlabel('Ramki czasowe')
-    # plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
+    plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
     plt.show()
 
     print(metrics)

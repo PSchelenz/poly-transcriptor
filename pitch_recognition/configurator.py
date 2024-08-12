@@ -29,7 +29,7 @@ DATA_CONFIG = {
         {
             'name': 'a_kiedy_piano',
             'dir': os.path.join(ROOT_DIR, 'audio/a_kiedy'),
-            'audio': 'a_kiedy_piano.mp3',
+            'audio': 'a_kiedy_piano_v2.mp3',
             'midi': 'a_kiedy.mid',
             'qpm': 146,
             'tolerance_s': 30,
@@ -93,8 +93,8 @@ DATA_CONFIG = {
 }
 
 PITCH_DETECTOR_TO_FILENAME_MAPPERS = {
-    'kt': 'karjalainen_tolonen',
-    # 'pi2': 'pi2',
+    # 'kt': 'karjalainen_tolonen',
+    'pi2': 'pi2',
     # 'cbpdn': 'conv_bpdn',
     # 'siplca': 'si_plca'
 }

@@ -10,7 +10,7 @@ import pickle
 notes = ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'Ais', 'H']
 octaves = ['0', '1', '2', '3', '4', '5', '6', '7', '8']
 
-def detect_pitch_cbpdn(filename, sr=11025, window_size=256, hop_length=128, **kwargs):
+def detect_pitch_cbpdn(filename, sr=11025, hop_length=128, window_size=256, **kwargs):
     window_size_ms = window_size/sr
 
     D = []

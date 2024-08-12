@@ -432,7 +432,7 @@ def filter_notes(pianoRoll, threshold = 0.01, count_notes_lt = 8):
 
     return normalized_pianoRoll
 
-def detect_pitch_siplca(filename, sr = 44100, frame_size=2048, hop_length=256, **kwargs):
+def detect_pitch_siplca(filename, sr = 44100, hop_length=256, frame_size=2048, **kwargs):
     global notes_count, min_freq
 
     R = 7
