@@ -1,6 +1,6 @@
 from definitions import ROOT_DIR
 from midi_to_array import midi2array
-from poly.cbpdn.cbpdn_algo_v2 import detect_pitch_cbpdn
+from poly.cbpdn.cbpdn_algo_v3 import detect_pitch_cbpdn
 from poly.pi2.algo import detect_pitch_pi2
 # from poly.pi2.algo_v2 import detect_pitch_pi2
 # from poly.karjalainen_tolonen.algo import detect_pitch_kt
@@ -80,9 +80,8 @@ def calculate_intersection(correct_array, predicted_array):
 def plot_midi_with_pitches(midi_array, pitches):
     global pitch_method
 
-    pitches = np.array(pitches)[:-6]
+    pitches = pitches[:-15]
 
-    pitches = np.array(pitches)[:]
     midi_array_scaled = scale_array(midi_array, len(pitches))
 
     if pitch_method == 'siplca':
@@ -138,7 +137,7 @@ def detect_pitch(beats_detector_function, filename, sr=44100, frame_length=2048,
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][8]
+    TRACK = DATA_CONFIG['tracks'][5]
 
     CURR_TRACK_NAME = TRACK['name']
 
@@ -154,9 +153,9 @@ if __name__ == '__main__':
         # ------------------------ #
 
         # Initial calculation values #
-        sample_rate = 44100
-        hop_length = 512
-        frame_length = 2048
+        sample_rate = 11025
+        hop_length = 128
+        frame_length = 512
         pitch_detector = globals()[f'detect_pitch_{pitch_method}']
         scaling_correction = TRACK['scaling_correction']
         # -------------------------- #

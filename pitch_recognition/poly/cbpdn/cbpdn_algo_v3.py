@@ -12,29 +12,6 @@ import matplotlib.pyplot as plt
 from definitions import ROOT_DIR
 
 
-def learn_dictionary(audio_folder, num_notes=88, note_length=1, sample_rate=11025):
-    dictionary = []
-
-    for i in range(num_notes):
-        note_file = os.path.join(audio_folder, f'note_{i + 21}.wav')  # Assuming MIDI note numbers start at 21 (A0)
-        if os.path.exists(note_file):
-            audio, sr = librosa.load(note_file, sr=sample_rate, duration=note_length, mono=True)
-
-            # Ensure the audio is the right length
-            if len(audio) < note_length * sample_rate:
-                audio = np.pad(audio, (0, note_length * sample_rate - len(audio)))
-            else:
-                audio = audio[:note_length * sample_rate]
-
-            dictionary.append(audio)
-        else:
-            print(f"Warning: File not found for note {i + 21}")
-            dictionary.append(np.zeros(note_length * sample_rate))
-
-    return np.array(dictionary)
-    pass
-
-
 def transcribe_audio(audio_file, dictionary, sample_rate=11025, lambda_val=0.05, **kwargs):
     global instrument
 
@@ -56,9 +33,9 @@ def transcribe_audio(audio_file, dictionary, sample_rate=11025, lambda_val=0.05,
     # Set up the CBPDN problem
     print('Setting up the CBPDN problem...')
     opt = cbpdn.ConvBPDN.Options({'Verbose': True,
-                                  'MaxMainIter': 1000,
-                                  'RelStopTol': 1e-5,
-                                  'HighMemSolve': True,
+                                  'MaxMainIter': 500,
+                                  'RelStopTol': 1e-4,
+                                  'HighMemSolve': False,
                                   'LinSolveCheck': False,
                                   'AuxVarObj': False,
                                   'AutoRho': {'Enabled': True}})
@@ -90,7 +67,7 @@ def post_process_and_peak_pick(Y, sr, window_size=512):
 
     # Pick the binarization threshold based on the inter-quartile range
     # todo: do all the melodies with noisy thresholding and clear thresholding, e.g. for lot trzemiala its 0.005 for clear and 0.001 for noisy
-    threshold = p75 + 8 * (p75 - p25)
+    threshold = 0.0017
 
     # Binarize
     Y[Y < threshold] = 0
@@ -109,6 +86,13 @@ def post_process_and_peak_pick(Y, sr, window_size=512):
         row = Y[start:end, :]
         sumrow = np.sum(row, axis=0)
         relex = argrelextrema(sumrow, np.greater)[0]
+
+        for i, note in enumerate(relex):
+            if 87 < note < 88 + 44:
+                relex[i] = note - 69
+            elif 88 + 44 <= note < 88 + 44 + 46:
+                relex[i] = note - 68 - 37
+
         onsets.append(relex + 1)
 
     return onsets
@@ -125,15 +109,40 @@ def onsets_to_notes(onsets, sr, window_size=512):
 
 def detect_pitch_cbpdn(filename, sr=11025, hop_length=128, window_size=256, **kwargs):
     global instrument
-    instrument = 'piano'
+    instrument = 'all'
 
     # Load dictionary
+    # dictionary = np.load(
+    #     os.path.join(
+    #         ROOT_DIR,
+    #         f'audio/{instrument}/remastered_v2/extracted_notes_1sec/{instrument}_all_notes_1sec_normalized.npy'
+    #     )
+    # )
+
     dictionary = np.load(
         os.path.join(
             ROOT_DIR,
-            f'audio/{instrument}/remastered_v2/extracted_notes_1sec/{instrument}_all_notes_1sec_normalized.npy'
+            f'audio/piano/remastered_v2/extracted_notes_1sec/piano_all_notes_1sec_normalized.npy'
         )
     )
+
+    dictionary2 = np.load(
+        os.path.join(
+            ROOT_DIR,
+            f'audio/guitar/remastered_v2/extracted_notes_1sec/guitar_all_notes_1sec_normalized.npy'
+        )
+    )
+
+    dictionary3 = np.load(
+        os.path.join(
+            ROOT_DIR,
+            f'audio/viola/remastered_v2/extracted_notes_1sec/viola_all_notes_1sec_normalized.npy'
+        )
+    )
+
+    dictionary = np.vstack((dictionary, dictionary2, dictionary3))
+
+
 
     # Transcribe audio
     X = transcribe_audio(filename, dictionary, sr, 0.05, **kwargs)

@@ -94,8 +94,8 @@ DATA_CONFIG = {
 
 PITCH_DETECTOR_TO_FILENAME_MAPPERS = {
     # 'kt': 'karjalainen_tolonen',
-    'pi2': 'pi2',
-    # 'cbpdn': 'conv_bpdn',
+    # 'pi2': 'pi2',
+    'cbpdn': 'conv_bpdn',
     # 'siplca': 'si_plca'
 }
 

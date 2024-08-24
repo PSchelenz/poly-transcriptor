@@ -43,7 +43,7 @@ def detect_pitch_cbpdn(filename, sr=11025, hop_length=128, window_size=256, **kw
     dimN = 1
 
     opt = cbpdn.ConvBPDN.Options({'Verbose': True,
-                                  'MaxMainIter': 300,
+                                  'MaxMainIter': 500,
                                   'HighMemSolve': False,
                                   'LinSolveCheck': False,
                                   'RelStopTol': 1e-3,
