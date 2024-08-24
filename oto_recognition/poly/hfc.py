@@ -19,7 +19,7 @@ def detect_onsets_hfc(audio_file, sr=44100, hop_length=512, frame_length=2048, m
     # Detect onsets: Compute first-order difference and apply threshold
     onset_env = np.diff(hfc)
     onset_env = np.maximum(0, onset_env)  # Half-wave rectification
-    onset_frames = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr, units='frames', hop_length=hop_length)
+    onset_frames = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr, units='frames', hop_length=hop_length, delta=0.2)
     onset_frames = onset_frames
     # onset_times = librosa.frames_to_time(onset_frames, sr=sr, hop_length=hop_length)
     #

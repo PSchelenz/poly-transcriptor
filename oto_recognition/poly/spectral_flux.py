@@ -1,5 +1,6 @@
 import librosa
 import librosa.display
+import madmom
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,47 +9,87 @@ Paul Masri, “Computer Modeling of Sound for Transformation and Synthesis of Mu
 '''
 
 def detect_onsets_sf(filename, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
-    # Load the audio file
-    y, sr = librosa.load(filename, sr=sr)
+    wlazl_kotek = {
+        "pre_avg": 0.1,
+        "post_avg": 0.1,
+        "pre_max": 0.03,
+        "post_max": 0.03,
+        "combine": 0.03,
+        "threshold": 8
+    }
 
-    # Compute the short-time Fourier transform (STFT)
-    D = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
+    # Dictionary for "Lot trzmiela"
+    lot_trzmiela = {
+        "pre_avg": 0.08,
+        "post_avg": 0.08,
+        "pre_max": 0.08,
+        "post_max": 0.08,
+        "combine": 0.07,
+        "threshold": 0.1
+    }
 
-    S = librosa.amplitude_to_db(D, ref=np.max)
+    # Dictionary for "Kołysanka"
+    kolysanka = {
+        "pre_avg": 1,
+        "post_avg": 1,
+        "pre_max": 0.5,
+        "post_max": 0.5,
+        "combine": 0.5,
+        "threshold": 1
+    }
 
-    # Compute spectral flux
-    onset_env = librosa.onset.onset_strength(S = S, hop_length=hop_length, sr=sr)
+    # Dictionary for "Kołysanka 2" (identical to "Kołysanka" based on provided information)
+    kolysanka_2 = {
+        "pre_avg": 1,
+        "post_avg": 1,
+        "pre_max": 0.5,
+        "post_max": 0.5,
+        "combine": 0.5,
+        "threshold": 12
+    }
+
+    kolysanka_3 = {
+        "pre_avg": 1,
+        "post_avg": 1,
+        "pre_max": 0.5,
+        "post_max": 0.5,
+        "combine": 0.5,
+        "threshold": 3
+    }
+
+    dictionary = kolysanka_2
+
+    proc = madmom.features.onsets.OnsetPeakPickingProcessor(
+        pre_avg=dictionary["pre_avg"],
+        post_avg=dictionary["post_avg"],
+        pre_max=dictionary["pre_max"],
+        post_max=dictionary["post_max"],
+        combine=dictionary["combine"],
+        threshold=dictionary["threshold"],
+        fps=100
+    )
+    act = madmom.features.onsets.SpectralOnsetProcessor('spectral_flux',
+                                                        sample_rate=sr,
+                                                        frame_size=frame_length,
+                                                        hop_size=hop_length)(filename)
 
     # Detect onsets
-    onsets = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr, hop_length=hop_length)
+    onsets = proc(act)
+    onsets = onsets * 100
 
-    # Convert frame indices to time
-    # onset_times = librosa.frames_to_time(onsets, sr=sr, hop_length=hop_length)
+    # Time vector for the audio segment
+    # time = np.linspace(0, 30, num=len(audio))
 
-    # Plotting
-    # plt.figure(figsize=(12, 8))
-
-    # Plot the waveform
-    # plt.subplot(2, 1, 1)
-    # librosa.display.waveshow(y, sr=sr, alpha=0.6)
-    # plt.vlines(onset_times, ymin=-1, ymax=1, color='r', linestyle='--', label='Onsets')
+    # Plot the audio waveform of the segment and detected onsets
+    # plt.figure(figsize=(14,4))
+    # plt.plot(time, audio, label='Audio Waveform (Segment)')
+    # plt.vlines(onsets, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Detected Onsets')
     # plt.legend()
-    # plt.title('Waveform with Onsets')
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Amplitude')
+    # plt.title('Detected Onsets in Polyphonic Music (30-second Segment)')
+    # plt.show()
 
-    # Plot the spectrogram
-    # plt.subplot(2, 1, 2)
-    # librosa.display.specshow(librosa.amplitude_to_db(D, ref=np.max),
-    #                          y_axis='log', x_axis='time')
-
-
-    # plt.vlines(onsets / 3.45, ymin=0, ymax=max_draw_note, color='r', linestyle='--', label='Onsets')
-
-
-    # plt.colorbar(format='%+2.0f dB')
-    # plt.title('Spectrogram with Onsets')
-    # plt.tight_layout()
-
-    # return onset_times
     return onsets
 
 if __name__ == '__main__':

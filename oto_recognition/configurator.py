@@ -54,10 +54,10 @@ DATA_CONFIG = {
 }
 
 ONSET_DETECTOR_TO_FILENAME_MAPPERS = {
-    'sd': 'spectral_diff',
-    'sf': 'spectral_flux',
-    'hfc': 'hfc',
-    'pd': 'phase_deviation',
+    # 'sd': 'spectral_diff',
+    # 'sf': 'spectral_flux',
+    # 'hfc': 'hfc',
+    # 'pd': 'phase_deviation',
     'rnn': 'rnn'
 }
 

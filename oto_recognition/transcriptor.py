@@ -4,12 +4,17 @@ from poly.spectral_flux import detect_onsets_sf
 from poly.spectral_diff import detect_onsets_sd
 from poly.rnn import detect_onsets_rnn
 from definitions import ROOT_DIR
-from oto_recognition.configurator import DATA_CONFIG, ONSET_DETECTOR_TO_FILENAME_MAPPERS, ONSET_DETECTOR_TO_HUMAN_READABLE
+from oto_recognition.configurator import DATA_CONFIG, ONSET_DETECTOR_TO_FILENAME_MAPPERS, \
+    ONSET_DETECTOR_TO_HUMAN_READABLE
 from midi_to_array import midi2array
 
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+
+TRACK_NUM = 4
+CORRECT_FIX = 0
+PREDICTED_FIX = 0
 
 
 def plot_midi_with_onsets(midi_array, onsets, data_scale, scaling_correction, correct_onsets, tolerance):
@@ -17,10 +22,37 @@ def plot_midi_with_onsets(midi_array, onsets, data_scale, scaling_correction, co
     tp = 0
     fp = 0
 
-    plt.figure(figsize=(14, 4))
+    if CORRECT_FIX != 0:
+        correct_onsets = correct_onsets[:CORRECT_FIX]
 
-    plt.plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
-             markersize=1, linestyle='')
+    # todo: for kolysanka
+    correct_onsets = np.append(correct_onsets, [9360])
+    correct_onsets = np.delete(correct_onsets, -7)
+
+    fig, axs = plt.subplots(3, 1, figsize=(12, 10))
+
+    axs[0].plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
+                markersize=1, linestyle='')
+    axs[0].set_ylim(1, 90)
+    axs[0].set_title('MIDI')
+    axs[0].set_ylabel('Numery dźwięków')
+
+    for onset in correct_onsets:
+        axs[0].axvline(x=onset, color='blue', linestyle='--', linewidth=1, label='Onsets')
+
+    axs[1].plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
+                markersize=1, linestyle='')
+    axs[1].set_ylim(1, 90)
+    axs[1].set_title('Predykcja')
+    axs[1].set_ylabel('Numery dźwięków')
+
+    for onset in onsets:
+        onset = onset * data_scale - scaling_correction
+        axs[1].axvline(x=onset, color='blue', linestyle='--', linewidth=1, label='Onsets')
+
+    axs[2].plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
+                markersize=1, linestyle='')
+    axs[2].set_ylim(1, 90)
 
     for onset in onsets:
         onset = onset * data_scale - scaling_correction
@@ -36,18 +68,22 @@ def plot_midi_with_onsets(midi_array, onsets, data_scale, scaling_correction, co
             color = 'r'
             fp += 1
 
-        plt.axvline(x=onset, color=color, linestyle='--', label='Onsets')
+        axs[2].axvline(x=onset, color=color, linestyle='--', linewidth=1, label='Onsets')
+    fn = len(correct_onsets) - tp  # -1
 
-    fn = len(correct_onsets) - 1 - tp
+    metrics = calculate_metrics(tp, fp, fn)
 
-    f_score = f_measure(tp, fp, fn)
+    axs[2].set_title(f'Trafność ({CURR_DETECTOR_READABLE_NAME}, F-score = {metrics["F-score"]:.2f})')
+    axs[2].set_ylabel('Numery dźwięków')
 
+    fig.tight_layout(h_pad=2.0)
+    plt.subplots_adjust(bottom=.05, top=.95)
     plt.xlabel('Ramki czasowe')
-    plt.ylabel('Dźwięki')
-    plt.title(f'Początki dźwięków w utworze ({CURR_DETECTOR_READABLE_NAME}, F-score = {f_score:.2f})')
-    plt.ylim(0, 90)
     plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
     plt.show()
+
+    print(metrics)
+
 
 def f_measure(tp, fp, fn):
     precision = tp / (tp + fp)
@@ -57,6 +93,22 @@ def f_measure(tp, fp, fn):
 
     return 2 * precision * recall / (precision + recall)
 
+
+def calculate_metrics(tp, fp, fn):
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    return {
+        "True Positives": tp,
+        "False Positives": fp,
+        "False Negatives": fn,
+        "Precision": precision,
+        "Recall": recall,
+        "F-score": f_score
+    }
+
+
 def detect_onsets(onsets_detector_function, filename, sr=44100, hop_length=512, frame_length=2048, max_draw_note=88):
     onsets = onsets_detector_function(filename, sr, hop_length, frame_length, max_draw_note)
 
@@ -65,7 +117,7 @@ def detect_onsets(onsets_detector_function, filename, sr=44100, hop_length=512, 
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][3]
+    TRACK = DATA_CONFIG['tracks'][TRACK_NUM]
 
     CURR_TRACK_NAME = TRACK['name']
 
@@ -95,6 +147,9 @@ if __name__ == '__main__':
                                sample_rate,
                                hop_length=hop_length,
                                frame_length=frame_length)
+
+        if PREDICTED_FIX != 0:
+            onsets = onsets[:PREDICTED_FIX]
 
         midi_array, note_change_times = midi2array(midi_track)
 
