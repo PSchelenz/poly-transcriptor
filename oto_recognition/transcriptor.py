@@ -69,6 +69,7 @@ def plot_midi_with_onsets(midi_array, onsets, data_scale, scaling_correction, co
             fp += 1
 
         axs[2].axvline(x=onset, color=color, linestyle='--', linewidth=1, label='Onsets')
+
     fn = len(correct_onsets) - tp  # -1
 
     metrics = calculate_metrics(tp, fp, fn)

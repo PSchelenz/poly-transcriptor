@@ -9,13 +9,47 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
+TRACK_NUM = 6
+PREDICTED_FIX = 0
+CORRECT_FIX = 0
+STARTING_BPM = 80
+
 def plot_midi_with_beats(midi_array, beats, data_scale, scaling_correction, correct_beats, tolerance):
-    plt.figure(figsize=(14, 4))
+    global CURR_TRACK_NAME, CURR_DETECTOR_NAME, CURR_DETECTOR_READABLE_NAME
+
     tp = 0
     fp = 0
 
+    if CORRECT_FIX != 0:
+        correct_beats = correct_beats[:CORRECT_FIX]
+
+    fig, axs = plt.subplots(3, 1, figsize=(12, 10))
+
+    axs[0].plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
+                markersize=1, linestyle='')
+    axs[0].set_ylim(1, 90)
+    axs[0].set_title('MIDI')
+    axs[0].set_ylabel('Numery dźwięków')
+
+    for beat in correct_beats:
+        axs[0].axvline(x=beat, color='blue', linestyle='--', linewidth=1, label='Onsets')
+
     plt.plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
              markersize=1, linestyle='')
+
+    axs[1].plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
+                markersize=1, linestyle='')
+    axs[1].set_ylim(1, 90)
+    axs[1].set_title('Predykcja')
+    axs[1].set_ylabel('Numery dźwięków')
+
+    for beat in beats:
+        beat = beat * data_scale - scaling_correction
+        axs[1].axvline(x=beat, color='blue', linestyle='--', linewidth=1, label='Onsets')
+
+    axs[2].plot(range(midi_array.shape[0]), np.multiply(np.where(midi_array > 0, 1, 0), range(1, 89)), marker='.',
+                markersize=1, linestyle='')
+    axs[2].set_ylim(1, 90)
 
     for beat in beats:
         beat = beat * data_scale - scaling_correction
@@ -31,22 +65,22 @@ def plot_midi_with_beats(midi_array, beats, data_scale, scaling_correction, corr
             color = 'r'
             fp += 1
 
-        plt.axvline(x=beat, color=color, linestyle='--', label='Beats')
-
-    # for beat in correct_beats:
-    #     plt.axvline(x=beat, color='b', linestyle='--', label='Correct beats')
+        axs[2].axvline(x=beat, color=color, linestyle='--', label='Beats')
 
     fn = len(correct_beats) - tp
 
-    f_score = f_measure(tp, fp, fn)
+    metrics = calculate_metrics(tp, fp, fn)
 
+    axs[2].set_title(f'Trafność ({CURR_DETECTOR_READABLE_NAME}, F-score = {metrics["F-score"]:.2f})')
+    axs[2].set_ylabel('Numery dźwięków')
+
+    fig.tight_layout(h_pad=2.0)
+    plt.subplots_adjust(bottom=.05, top=.95)
     plt.xlabel('Ramki czasowe')
-    plt.ylabel('Dźwięki')
-    plt.title(f'Bity ({CURR_DETECTOR_READABLE_NAME}, F-score = {f_score:.2f})')
-    plt.ylim(0, 90)
     plt.savefig(os.path.join(DATA_CONFIG['save_to'], f'{CURR_TRACK_NAME}__{CURR_DETECTOR_NAME}.png'))
     plt.show()
 
+    print(metrics)
 
 def f_measure(tp, fp, fn):
     precision = tp / (tp + fp)
@@ -56,6 +90,19 @@ def f_measure(tp, fp, fn):
 
     return 2 * precision * recall / (precision + recall)
 
+def calculate_metrics(tp, fp, fn):
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    return {
+        "True Positives": tp,
+        "False Positives": fp,
+        "False Negatives": fn,
+        "Precision": precision,
+        "Recall": recall,
+        "F-score": f_score
+    }
 
 def detect_beats(beats_detector_function, filename, sr=44100, hop_length=512, frame_length=2048, fps=100, start_bpm=120):
     beats = beats_detector_function(filename, sr, hop_length, frame_length, fps, start_bpm=start_bpm)
@@ -65,7 +112,7 @@ def detect_beats(beats_detector_function, filename, sr=44100, hop_length=512, fr
 
 if __name__ == '__main__':
     MIDI_RESOLUTION = DATA_CONFIG['midi_resolution']
-    TRACK = DATA_CONFIG['tracks'][6]
+    TRACK = DATA_CONFIG['tracks'][TRACK_NUM]
 
     CURR_TRACK_NAME = TRACK['name']
 
@@ -86,7 +133,7 @@ if __name__ == '__main__':
         frame_length = 2048
         beats_detector = globals()[f'detect_beats_{beat_method}']
         scaling_correction = TRACK['scaling_correction']
-        start_bpm = 240
+        start_bpm = STARTING_BPM
         # -------------------------- #
 
         #    Calculate and plot     #
@@ -99,6 +146,9 @@ if __name__ == '__main__':
 
         midi_array, _ = midi2array(midi_track)
         correct_beats = TRACK['correct_beats']
+
+        if PREDICTED_FIX != 0:
+            beats = beats[:PREDICTED_FIX]
 
         # scale = midi resolution / time between quarter notes in seconds / frames per second
         if beat_method == 'crf' or beat_method == 'dbn':

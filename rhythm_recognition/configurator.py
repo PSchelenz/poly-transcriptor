@@ -13,7 +13,7 @@ DATA_CONFIG = {
             'qpm': 100,
             'tolerance_s': 50,
             'scaling_correction': 35,
-            'correct_beats': [i * 480 for i in range(17)]
+            'correct_beats': [i * 480 for i in range(18)]
         },
         {
             'name': 'lot_trzmiela',
@@ -22,7 +22,7 @@ DATA_CONFIG = {
             'midi': 'lot-trzmiela.mid',
             'qpm': 140,
             'tolerance_s': 30,
-            'scaling_correction': 55,
+            'scaling_correction': 80,
             'correct_beats': [i * 480 for i in range(46)]
         },
         {
@@ -58,7 +58,7 @@ DATA_CONFIG = {
         {
             'name': 'girl_from_ipanema',
             'dir': os.path.join(ROOT_DIR, 'audio/girl_from_ipanema'),
-            'audio': 'ipanema-piano.mp3',
+            'audio': 'ipanema-piano-v2.mp3',
             'midi': 'ipanema-piano.mid',
             'qpm': 120,
             'tolerance_s': 40,
@@ -79,8 +79,8 @@ DATA_CONFIG = {
 }
 
 BEAT_DETECTOR_TO_FILENAME_MAPPERS = {
-    'dp': 'dynamic_programming',
-    'dbn': 'dynamic_bayesian_network',
+    # 'dp': 'dynamic_programming',
+    # 'dbn': 'dynamic_bayesian_network',
     'crf': 'conditional_random_fields',
 }
 
